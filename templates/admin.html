@@ -1,0 +1,36 @@
+<html>
+
+<head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/skeleton/2.0.4/skeleton.css" />
+    <link rel="stylesheet" href="/static/custom.css" />
+    <title>Admin page</title>
+</head>
+
+<body>
+    <div id="nav" class="fourteen columns">
+        <ul>
+            <li><a href="player/">Player Page</a></li>
+            <li><a href="admin/">Admin Page</a></li>
+            <li><a href="login/">Login</a></li>
+            <li><a href="logout">Logout</a></li>
+        </ul>
+    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %} {% if messages %}
+    <ul>
+        {% for message in messages %}
+        <li>{{ message[1] }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %} {% endwith %}
+    <h2>Day {{day}}, hour {{hour}}</h2>
+    {% for (name, table) in player_info %}
+    <h5>Status of {{name}}</h5>
+    {{table}} {% endfor %}
+    <br>
+    <br>
+    <form method="post">
+        <input type="Submit" value="Advance to next hour">
+    </form>
+</body>
+
+</html>

@@ -1,4 +1,5 @@
 from engine import *
+from utils import *
 from random import randint
 
 player_names = ['Player_1', 'Player_2', 'Player_3']
@@ -33,4 +34,5 @@ for day in bids:
                 in hour_bid.iteritems()]
         state.run_hour(bids)
         print "="*10
+    print make_people_table(players)
     state.end_day([plant for name, plant in plants.iteritems()])

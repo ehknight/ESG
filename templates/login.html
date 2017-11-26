@@ -1,0 +1,32 @@
+
+<html>
+
+<head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/skeleton/2.0.4/skeleton.css" />
+    <link rel="stylesheet" href="/static/custom.css" />
+    <title>Login</title>
+</head>
+
+<body>
+    <div id="nav" class="fourteen columns">
+        <ul>
+            <li><a href="player">Player Page</a></li>
+            <li><a href="admin">Admin Page</a></li>
+            <li><a href="login">Login</a></li>
+            <li><a href="logout">Logout</a></li>
+        </ul>
+    </div>
+
+    <centered>
+        <h1>Login</h1>
+        <form action='login' method='POST'>
+            <input type='text' name='email' id='email' placeholder='username' />
+            <br>
+            <input type='password' name='password' id='password' placeholder='password' />
+            <br>
+            <input type='submit' name='submit' />
+        </form>
+    </centered>
+</body>
+
+</html>

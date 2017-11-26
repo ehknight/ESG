@@ -10,7 +10,7 @@ from functools import partial
 from matplotlib import pyplot as plt
 from time import sleep
 from warnings import warn
-
+from utils import reset_bids
 
 # Globals
 
@@ -18,11 +18,11 @@ TESTING = True
 STARTING_MONEY = 0
 
 if TESTING:
-    demand_csv = pd.read_csv("/Users/ethknig/School 2017-2018/Environmental Econ/WorldNS/test_demand.csv")   
-    portfolio_csv = pd.read_csv("/Users/ethknig/School 2017-2018/Environmental Econ/WorldNS/test_portfolios.csv")
+    demand_csv = pd.read_csv("test_csv/demand.csv")   
+    portfolio_csv = pd.read_csv("test_csv/portfolios.csv")
 else:
-    demand_csv = pd.read_csv("/Users/ethknig/School 2017-2018/Environmental Econ/WorldNS/demand.csv")
-    portfolio_csv = pd.read_csv("/Users/ethknig/School 2017-2018/Environmental Econ/WorldNS/portfolios.csv")
+    demand_csv = pd.read_csv("csv/demand.csv")
+    portfolio_csv = pd.read_csv("csv/portfolios.csv")
 
 # Utility Functions
 first = lambda x: x[0]
@@ -107,7 +107,7 @@ class GameState(object):
         else:
             raise ValueError
 
-    def run_hour(self, plant_bids):
+    def run_hour(self, plant_bids, auto_end_day=False):
         # tuples of (plant, bid)
         plants, bids = map(first, plant_bids), map(second, plant_bids)
         price_fn, sorted_plants = self.construct_price_curve(plant_bids)
@@ -128,26 +128,32 @@ class GameState(object):
 
         for plant, bid in sorted_plants:
             leftover_electricity = true_demand - total_activated_so_far
-            if leftover_electricity <= 0:
+            assert leftover_electricity >= 0
+            
+            if leftover_electricity == 0:
                 print "All electricity used up"
-                break
-            electricity_used = min(leftover_electricity, plant.capacity)
 
-            _, mwh_used = plant.activate(electricity_used)
-            price_per_mwh = price_per_mwh_fn(mwh_used)
+            electricity_used = min(leftover_electricity, plant.capacity)
+            price_per_mwh = price_per_mwh_fn(electricity_used)
             print "Plant {} used {} MWh of electricity at ${}/MWh"\
                   .format(plant.name, electricity_used, price_per_mwh)
-            plant.transfer_profits(price_per_mwh, mwh_used)
+
+            plant.log_cost(electricity_used)
+            plant.log_profit(price_per_mwh, electricity_used)
             
             total_activated_so_far += electricity_used
         
         print_players_from_plants(plants)
+        reset_bids(plants)
         self.cur_hour += 1
+        if self.cur_hour > 4:
+            self.end_day(plants)
 
     def end_day(self, plants):
         for plant in plants:
-            total_cost = plant.reset()
-            plant.owner.money -= total_cost
+            plant.transfer(day_end=True)
+            plant.reset()
+
         self.switch_auction_type()
         print "Day ended"
         print_players_from_plants(plants)
@@ -158,6 +164,7 @@ class Player(object):
     def __init__(self, name):
         self.name = name
         self.plants = []
+        self.bids = {}
         self.money = STARTING_MONEY
     
     def buy_portfolio(self, portfolio_name):
@@ -175,6 +182,15 @@ class Player(object):
             plant = Plant(**kwargs)
             plant.owner = self
             self.plants.append(plant)
+            self.bids[plant] = 0
+        
+    def bid(self, plant_name, bid):
+        matching_plants = [plant for plant in self.plants if plant.name==plant_name]
+        assert len(matching_plants) == 1
+        plant = matching_plants[0]
+       
+        self.bids[plant] = bid
+        plant.bid = bid
     
     def __str__(self):
         return "\nPlayer name: {} | Plants owned: {} | Total money: {}"\
@@ -190,30 +206,43 @@ class Plant(object):
         self.heat_rate = heat_rate # MMBTU/MWh
         self.fuel_price = fuel_price # $/MMBTU
         self.o_and_m = o_and_m # $/day
-
         self.owner = None
-        self.total_electricity = 0
-        self.total_cost = 0
         self.reset()
     
     def reset(self):
-        cost_this_day = self.total_cost + self.o_and_m
-        self.total_electricity = 0
-        self.total_cost = 0
-        return cost_this_day
+        # NOTE: when is o&m paid?
+        self.costs = []
+        self.profits = []
+        self.electricity_used = []
+        self.bid = 0
 
-    def activate(self, mwh_used):
+    def log_cost(self, mwh_used):
         # calculate cost for some hour
         assert 0 <= mwh_used <= self.capacity
         heat_produced = mwh_used * self.heat_rate
         cost_from_heat = heat_produced * self.fuel_price
         cost_from_var_cost = mwh_used * self.cost_per_mwh
         cur_cost = cost_from_heat + cost_from_var_cost
-        self.total_cost += cur_cost
-        self.total_electricity += mwh_used
-        return cur_cost, mwh_used
+        self.costs.append(cur_cost)
+        self.electricity_used.append(mwh_used)
 
-    def transfer_profits(self, price_per_mwh, amount_used):
+    def log_profit(self, price_per_mwh, amount_used):
         assert 0 <= amount_used <= self.capacity
-        print "Transfering {:,} to {}".format(price_per_mwh * amount_used, self.owner.name)
-        self.owner.money += price_per_mwh * amount_used
+        self.profits.append(price_per_mwh * amount_used)
+    
+    def transfer_cost(self, day_end=False):
+        if day_end:
+            self.costs.append(self.o_and_m)
+        total_costs = sum(self.costs)
+        self.owner.money -= total_costs
+        self.costs = []
+    
+    def transfer_profit(self):
+        total_profits = sum(self.profits)
+        print "Transfering {:,} to {}".format(total_profits, self.owner.name)
+        self.owner.money += total_profits
+        self.profits = []
+    
+    def transfer(self, day_end=False):
+        self.transfer_cost(day_end)
+        self.transfer_profit()

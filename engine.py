@@ -14,7 +14,7 @@ from utils import reset_bids
 
 # Globals
 
-TESTING = True
+TESTING = False
 
 if TESTING:
     demand_csv = pd.read_csv("test_csv/demand.csv")   
@@ -23,6 +23,7 @@ if TESTING:
 else:
     demand_csv = pd.read_csv("csv/demand.csv")
     portfolio_csv = pd.read_csv("csv/portfolios.csv")
+    print portfolio_csv
     users_csv = pd.read_csv("csv/users.csv")
 
 # Utility Functions
@@ -73,7 +74,7 @@ class GameState(object):
                                          [demand_csv['hour'] == self.cur_hour]
         self.gen_noise = partial(np.random.normal, scale=self.noise_scale)
         def demand_fn(load, base_demand):
-            cur_loadslope = self.get_cur_demand_row()['loadslope']
+            cur_loadslope = sum(self.get_cur_demand_row()['loadslope'])
             assert cur_loadslope != 0
             return cur_loadslope * (load-base_demand)
         self.demand_fn = demand_fn
@@ -88,11 +89,11 @@ class GameState(object):
         est_demand = self.get_cur_demand_row()['load'].tolist()
         cur_loadslope = self.get_cur_demand_row()['loadslope'].tolist()
 
-        assert (len(est_demand) == 2) and (len(cur_loadslope) == 2)
-        assert cur_loadslope[0] == cur_loadslope[1]
+        assert (len(est_demand) == 1) and (len(cur_loadslope) == 1)
+        # assert cur_loadslope[0] == cur_loadslope[1]
         
         cur_loadslope = cur_loadslope[0]
-        est_demand = sum(est_demand)
+        est_demand = est_demand[0]
         base_demand = est_demand+self.gen_noise()
 
         if cur_loadslope == 0: # NOTE: when loadslope is 0, treat as vertical line

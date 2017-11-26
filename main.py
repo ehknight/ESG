@@ -63,9 +63,13 @@ def login():
         user = User()
         user.id = email
         flask_login.login_user(user)
-        return flask.redirect(flask.url_for('playerview'))
+        if current_user.id == 'admin':
+            return flask.redirect(flask.url_for('adminview'))
+        else:
+            return flask.redirect(flask.url_for('playerview'))
 
-    return flask.redirect(flask.url_for('playerview'))
+    return flask.redirect(flask.url_for('login'))
+
 
 @app.route('/logout')
 def logout():
@@ -156,4 +160,4 @@ def playerview():
     return render_template('player.html', **kwargs)
 
 if __name__ == '__main__':
-    app.run(debug=DEBUG)
+    app.run(debug=DEBUG, threaded=True)

@@ -24,8 +24,8 @@
     </ul>
     {% endif %} {% endwith %}
     <h1>Player page: {{name}}</h1>
-    <h2>Day {{day}}, hour {{hour}}</h2>
-    <h3>Current Status: </h3>
+    <h3>Day {{day}}, hour {{hour}} | Auction type: {{auction_type}}</h3>
+    <b>Player info:</b> {{player_info}}
     {{table}}
     <h3>Bidding</h3>
     <form action="" method="post">

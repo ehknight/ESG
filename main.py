@@ -10,28 +10,15 @@ from utils import *
 
 ########## SETUP ##########
 
-DEBUG = True
+DEBUG = False
 app = Flask(__name__)
 login_manager = LoginManager(app)
-app.config['SECRET_KEY'] = 'pastaelephantgreenleafshoe'
+app.config['SECRET_KEY'] = 'bnoeuzoeqpv'
 state = GameState()
 
-users = OrderedDict([('admin', {'password': 'admin', 'admin': True}),
-        ('Player_1', {'password': 'player', 'admin': False}),
-        ('Player_2', {'password': 'player', 'admin': False}),
-        ('Player_3', {'password': 'player', 'admin': False}),
-])
-
-players = OrderedDict([(key, Player(key)) for key in users if key != 'admin'])
-
-def backup():
-    global state, players
-    to_save = {'state': state, 'players': players}
-    for name in to_save:
-        output = open('backup_{}_day{}_hour{}.pkl'\
-                .format(name, state.cur_day, state.cur_hour), 'wb')
-        dill.dump(to_save[name], output)
-    return
+users, portfolios = get_users_and_portfolios(users_csv)
+players = construct_players(users)
+buy_portfolios(players, portfolios)
 
 ########## USER MANAGEMENT ##########
 
@@ -93,12 +80,6 @@ def unauthorized_handler():
 def mainhtml():
     return flask.redirect(flask.url_for('playerview'))
 
-########## TESTING ##########
-
-players['Player_1'].buy_portfolio('Portfolio_1')
-players['Player_2'].buy_portfolio('Portfolio_2')
-players['Player_3'].buy_portfolio('Portfolio_3')
-
 ########## FORMS ETC ##########
 
 @login_required
@@ -131,12 +112,13 @@ def adminview():
         all_plants = get_plants_from_people(player_objs)
         bids = [(plant, plant.bid) for plant in all_plants]
         state.run_hour(bids)
-        backup()
+        backup({'state': state, 'players': players}, 
+                state.cur_day, state.cur_hour)
     
-    tables = [(name, make_plants_table(player.plants)) 
+    tables = [(name, str(player), make_plants_table(player.plants)) 
               for name, player in players.iteritems()]
 
-    return render_template('admin.html', player_info=tables,
+    return render_template('admin.html', player_info=tables, auction_type=state.auction_type,
                             day=state.cur_day, hour=state.cur_hour)
 
 @login_required
@@ -145,7 +127,7 @@ def playerview():
     try: current_user.id == 'test'
     except: return flask.redirect(flask.url_for('login'))
     if current_user.id == 'admin':
-        return flask.redirect(flask.url_for('adminview'))
+        return flask.redirect(flask.url_for('login'))
     else:
         user = current_user
         player = players[user.id]
@@ -157,8 +139,8 @@ def playerview():
         bid = request.form['bid']
  
         if form.validate():
-            # Save the comment here.
             bid = float(bid)
+            bid = max(0., min(bid, 500.))
             flash('Bid {} on plant {}'.format(bid, plant_name))
             player.bid(plant_name, bid)
         else:
@@ -167,7 +149,8 @@ def playerview():
     table = make_plants_table(player.plants)
     kwargs = {
         'table':table, 'form':form, 'name': user.id,
-        'day': state.cur_day, 'hour': state.cur_hour
+        'day': state.cur_day, 'hour': state.cur_hour,
+        'auction_type': state.auction_type, 'player_info': str(player)
     }
 
     return render_template('player.html', **kwargs)

@@ -15,14 +15,15 @@ from utils import reset_bids
 # Globals
 
 TESTING = True
-STARTING_MONEY = 0
 
 if TESTING:
     demand_csv = pd.read_csv("test_csv/demand.csv")   
     portfolio_csv = pd.read_csv("test_csv/portfolios.csv")
+    users_csv = pd.read_csv("test_csv/users.csv")
 else:
     demand_csv = pd.read_csv("csv/demand.csv")
     portfolio_csv = pd.read_csv("csv/portfolios.csv")
+    users_csv = pd.read_csv("csv/users.csv")
 
 # Utility Functions
 first = lambda x: x[0]
@@ -56,7 +57,7 @@ def get_intersection(f1, f2):
     if isinstance(f2, int) or isinstance(f2, float):
         return f2
     else:
-        optim = scipy.optimize.minimize(lambda x: (f2(x[0]) - f1(x[0]))**2, x0=0, method='Nelder-Mead')
+        optim = scipy.optimize.minimize(lambda x: (f2(x[0]) - f1(x[0]))**2, x0=0)
         print "x1: {}, y1: {}, y2: {}".format(optim.x[0], f1(optim.x), f2(optim.x))
         return optim.x[0]
 
@@ -64,7 +65,7 @@ def get_intersection(f1, f2):
 class GameState(object):
     def __init__(self):
         self.noise_scale = 0
-        self.auction_type = 'uniform' # can also be uniform
+        self.auction_type = 'uniform' # can also be discrete
         self.cur_day = 1
         self.cur_hour = 1
 
@@ -100,12 +101,10 @@ class GameState(object):
             return partial(self.demand_fn, base_demand=base_demand)
     
     def switch_auction_type(self):
-        if self.auction_type == 'uniform': 
-            self.auction_type = 'discrete'
-        elif self.auction_type == 'discrete':
+        if self.cur_day == 1 or self.cur_day == 2:
             self.auction_type = 'uniform'
         else:
-            raise ValueError
+            self.auction_type = 'discrete'
 
     def run_hour(self, plant_bids, auto_end_day=False):
         # tuples of (plant, bid)
@@ -121,7 +120,6 @@ class GameState(object):
         if self.auction_type == 'uniform':
             price_per_mwh_fn = lambda plant: price_fn(true_demand)
         elif self.auction_type == 'discrete':
-            raise NotImplementedError
             price_per_mwh_fn = lambda plant: bids[plants.index(plant)]
         else:
             raise ValueError
@@ -134,7 +132,7 @@ class GameState(object):
                 print "All electricity used up"
 
             electricity_used = min(leftover_electricity, plant.capacity)
-            price_per_mwh = price_per_mwh_fn(electricity_used)
+            price_per_mwh = price_per_mwh_fn(plant)
             print "Plant {} used {} MWh of electricity at ${}/MWh"\
                   .format(plant.name, electricity_used, price_per_mwh)
 
@@ -161,11 +159,11 @@ class GameState(object):
         self.cur_day += 1
 
 class Player(object):
-    def __init__(self, name):
+    def __init__(self, name, starting_money):
         self.name = name
         self.plants = []
         self.bids = {}
-        self.money = STARTING_MONEY
+        self.money = float(starting_money)
     
     def buy_portfolio(self, portfolio_name):
         plants = []
@@ -193,7 +191,7 @@ class Player(object):
         plant.bid = bid
     
     def __str__(self):
-        return "\nPlayer name: {} | Plants owned: {} | Total money: {}"\
+        return "\nName: {} | Plants owned: {} | Total money: ${}"\
                 .format(self.name, [plant.name for plant in self.plants], self.money)
 
 class Plant(object):

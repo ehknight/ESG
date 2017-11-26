@@ -1,3 +1,6 @@
+import dill
+import pandas as pd
+from collections import OrderedDict
 from flask_table import Table, Col
 
 class PlantTable(Table):
@@ -5,12 +8,12 @@ class PlantTable(Table):
     electricity_used = Col('Electricity Used')
     costs = Col('Costs')
     profits = Col('Profits')
-    bids = Col('Bids')
+    bids = Col('Current Bid')
 
 class PeopleTable(Table):
     name = Col('Name')
     money = Col('Money')
-    plants = Col('Plants')
+    plants = Col('Plant')
 
 def make_plants_table(plants):
     plants_table_constructor = []
@@ -43,4 +46,32 @@ def reset_bids(plants):
         plant.bid = 0
         assert plant in plant.owner.bids
         plant.owner.bids[plant] = 0
+    return
+
+def get_users_and_portfolios(csv):
+    user_dict = OrderedDict({'admin': {'password': 'admin', 'admin': True}})
+    portfolios = dict()
+    for _, row in csv.iterrows():
+        info = {'password': row['Password'], 'admin': False, 
+                'starting_money': row['Starting Money']}
+        user_dict[row['Player Name']] = info
+        portfolios[row['Player Name']] = row['Portfolio Owned']
+    return user_dict, portfolios
+
+def construct_players(users):
+    from engine import Player
+    player_tups = []
+    for name in users:
+        if users[name]['admin']: continue
+        player_tups.append((name, Player(name, users[name]['starting_money'])))
+    return OrderedDict(player_tups)
+
+def buy_portfolios(players, portfolios):
+    for name, portfolio in portfolios.iteritems():
+        players[name].buy_portfolio(portfolio)
+
+def backup(save_dict, day, hour):
+    for name in save_dict:
+        output = open('backup/{}_day{}_hour{}.pkl'.format(name, day, hour), 'wb')
+        dill.dump(save_dict[name], output)
     return

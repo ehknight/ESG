@@ -9,9 +9,9 @@
 <body>
     <div id="nav" class="fourteen columns">
         <ul>
-            <li><a href="player/">Player Page</a></li>
-            <li><a href="admin/">Admin Page</a></li>
-            <li><a href="login/">Login</a></li>
+            <li><a href="player">Player Page</a></li>
+            <li><a href="admin">Admin Page</a></li>
+            <li><a href="login">Login</a></li>
             <li><a href="logout">Logout</a></li>
         </ul>
     </div>
@@ -22,9 +22,10 @@
         {% endfor %}
     </ul>
     {% endif %} {% endwith %}
-    <h2>Day {{day}}, hour {{hour}}</h2>
-    {% for (name, table) in player_info %}
+    <h2>Day {{day}}, hour {{hour}} | Auction type: {{auction_type}}</h2>
+    {% for (name, player, table) in player_info %}
     <h5>Status of {{name}}</h5>
+    {{player}}
     {{table}} {% endfor %}
     <br>
     <br>

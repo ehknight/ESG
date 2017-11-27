@@ -160,4 +160,4 @@ def playerview():
     return render_template('player.html', **kwargs)
 
 if __name__ == '__main__':
-    app.run(debug=DEBUG, threaded=True)
+    app.run(debug=DEBUG, threaded=True, port=80, host='0.0.0.0')

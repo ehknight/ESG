@@ -5,13 +5,17 @@ from collections import OrderedDict
 import flask_login
 import flask
 import dill
+import click
 from engine import *
 from utils import *
+import logging
 
 ########## SETUP ##########
 
 DEBUG = False
 app = Flask(__name__)
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
 login_manager = LoginManager(app)
 app.config['SECRET_KEY'] = 'bnoeuzoeqpv'
 state = GameState()
@@ -123,7 +127,8 @@ def adminview():
               for name, player in players.iteritems()]
 
     return render_template('admin.html', player_info=tables, auction_type=state.auction_type,
-                            day=state.cur_day, hour=state.cur_hour)
+                            day=state.cur_day, hour=state.cur_hour, demands=state.demands,
+                            breakpoints=state.breakpoints, sorted_bids=state.str_sorted_bids)
 
 @login_required
 @app.route("/player", methods=['GET', 'POST'])
@@ -154,10 +159,24 @@ def playerview():
     kwargs = {
         'table':table, 'form':form, 'name': user.id,
         'day': state.cur_day, 'hour': state.cur_hour,
-        'auction_type': state.auction_type, 'player_info': str(player)
+        'auction_type': state.auction_type, 'player_info': str(player),
+        'demands': state.demands, 'breakpoints': state.breakpoints,
+        'sorted_bids': state.str_sorted_bids
     }
 
     return render_template('player.html', **kwargs)
 
-if __name__ == '__main__':
+@click.command()
+@click.option('--state_backup')
+@click.option('--player_backup')
+def main(state_backup, player_backup):
+    global state, players
+    if state_backup:
+        print("LOADED STATE")
+        state = dill.load(open(state_backup))
+    if player_backup:
+        players = dill.load(open(player_backup))
+        print("LOADED PLAYERS")
     app.run(debug=DEBUG, threaded=True, port=80, host='0.0.0.0')
+
+main()

@@ -23,6 +23,7 @@
     </ul>
     {% endif %} {% endwith %}
     <h2>Day {{day}}, hour {{hour}} | Auction type: {{auction_type}}</h2>
+    <b>Demands: </b> {{demands}} | <b>Breakpoints: </b> {{breakpoints}} | <b>Sorted Bids/Capacities: </b> {{sorted_bids}} <br>
     {% for (name, player, table) in player_info %}
     <h5>Status of {{name}}</h5>
     {{player}}

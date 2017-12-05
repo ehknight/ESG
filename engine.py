@@ -51,8 +51,7 @@ def create_step_function(steps):
             x = 0
         print 'load is at {}'.format(load)
         return x
-    
-    return lambda load: ys[get_break_point(load)]
+    return lambda load: ys[get_break_point(load)], lambda load: get_break_point(load)
 
 def get_intersection(f1, f2):
     if isinstance(f2, int) or isinstance(f2, float):
@@ -66,9 +65,12 @@ def get_intersection(f1, f2):
 class GameState(object):
     def __init__(self):
         self.noise_scale = 0
-        self.auction_type = 'uniform' # can also be discrete
+        self.auction_type = 'discrete' # can also be discrete
         self.cur_day = 1
         self.cur_hour = 1
+        self.breakpoints = []
+        self.demands = []
+        self.str_sorted_bids = []
 
         self.get_cur_demand_row = lambda: demand_csv[demand_csv['round'] == self.cur_day]\
                                          [demand_csv['hour'] == self.cur_hour]
@@ -83,7 +85,8 @@ class GameState(object):
         # plant_bids is tuples of (plant, bid)
         sorted_plants = sorted(plant_bids, key=second)
         plants_capacity = [(plant.capacity, bid) for plant, bid in sorted_plants]
-        return create_step_function(plants_capacity), sorted_plants
+        step_fn, breakpoint_fn = create_step_function(plants_capacity)
+        return step_fn, sorted_plants, breakpoint_fn
 
     def construct_demand_curve(self):
         est_demand = self.get_cur_demand_row()['load'].tolist()
@@ -102,7 +105,7 @@ class GameState(object):
             return partial(self.demand_fn, base_demand=base_demand)
     
     def switch_auction_type(self):
-        if self.cur_day == 1 or self.cur_day == 2:
+        if self.cur_day == 3 or self.cur_day == 4:
             self.auction_type = 'uniform'
         else:
             self.auction_type = 'discrete'
@@ -110,12 +113,14 @@ class GameState(object):
     def run_hour(self, plant_bids, auto_end_day=False):
         # tuples of (plant, bid)
         plants, bids = map(first, plant_bids), map(second, plant_bids)
-        price_fn, sorted_plants = self.construct_price_curve(plant_bids)
+        price_fn, sorted_plants, breakpoint_fn = self.construct_price_curve(plant_bids)
 
-        print "Sorted bids: {}".format([(plant.name, bid)for plant, bid in sorted_plants])
+        self.str_sorted_bids = [(plant.name, bid) for plant, bid in sorted_plants]
+        print self.str_sorted_bids
 
         demand_fn = self.construct_demand_curve()
         true_demand = get_intersection(price_fn, demand_fn)
+        # self.breakpoints.append(breakpoint_fn(true_demand))
         total_activated_so_far = 0
 
         if self.auction_type == 'uniform':
@@ -147,8 +152,11 @@ class GameState(object):
         self.cur_hour += 1
         if self.cur_hour > 4:
             self.end_day(plants)
+        self.demands.append(true_demand)
 
     def end_day(self, plants):
+        self.demands = []
+        self.breakpoints = []
         for plant in plants:
             plant.transfer(day_end=True)
             plant.reset()
@@ -213,6 +221,8 @@ class Plant(object):
         self.costs = []
         self.profits = []
         self.electricity_used = []
+        print "Resetting. Name: {}, Costs: {}, Profits: {}, Electricity Used: {}".format(self.name, self.costs, self.profits, self.electricity_used)
+
         self.bid = 0
 
     def log_cost(self, mwh_used):

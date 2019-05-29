@@ -1,0 +1,8 @@
+flask
+pandas
+wtforms
+flask_login
+dill
+scipy
+matplotlib
+flask_table

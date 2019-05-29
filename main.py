@@ -115,8 +115,8 @@ def adminview():
         return flask.redirect(flask.url_for('login'))
     
     if request.method == 'POST':
-        print "Advancing to next hour"
-        player_objs = [player for name, player in players.iteritems()]
+        print("Advancing to next hour")
+        player_objs = [player for name, player in players.items()]
         all_plants = get_plants_from_people(player_objs)
         bids = [(plant, plant.bid) for plant in all_plants]
         state.run_hour(bids)
@@ -124,7 +124,7 @@ def adminview():
                 state.cur_day, state.cur_hour)
     
     tables = [(name, str(player), make_plants_table(player.plants)) 
-              for name, player in players.iteritems()]
+              for name, player in players.items()]
 
     return render_template('admin.html', player_info=tables, auction_type=state.auction_type,
                             day=state.cur_day, hour=state.cur_hour, demands=state.demands,
@@ -142,7 +142,7 @@ def playerview():
         player = players[user.id]
     form = construct_form(user)(request.form)
  
-    print form.errors
+    print(form.errors)
     if request.method == 'POST':
         plant_name = request.form['plant']
         bid = request.form['bid']

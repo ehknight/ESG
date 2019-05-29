@@ -31,8 +31,8 @@ plants = dict(plants)
 for day in bids:
     for hour_bid in day:
         bids = [(plants[plant_name], bid) for plant_name, bid
-                in hour_bid.iteritems()]
+                in hour_bid.items()]
         state.run_hour(bids)
-        print "="*10
-    print make_people_table(players)
-    state.end_day([plant for name, plant in plants.iteritems()])
+        print("="*10)
+    print(make_people_table(players))
+    state.end_day([plant for name, plant in plants.items()])

@@ -67,7 +67,7 @@ def construct_players(users):
     return OrderedDict(player_tups)
 
 def buy_portfolios(players, portfolios):
-    for name, portfolio in portfolios.iteritems():
+    for name, portfolio in portfolios.items():
         players[name].buy_portfolio(portfolio)
 
 def backup(save_dict, day, hour):

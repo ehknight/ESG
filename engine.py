@@ -2,7 +2,7 @@
 # NOTE: BIDS ARE PLACED ON A DAY-TO-DAY BASIS
 # also make sure to take integral in the case of sloped demand curve
 
-from __future__ import division
+
 import numpy as np
 import scipy.optimize
 import pandas as pd
@@ -23,7 +23,7 @@ if TESTING:
 else:
     demand_csv = pd.read_csv("csv/demand.csv")
     portfolio_csv = pd.read_csv("csv/portfolios.csv")
-    print portfolio_csv
+    print(portfolio_csv)
     users_csv = pd.read_csv("csv/users.csv")
 
 # Utility Functions
@@ -33,11 +33,11 @@ lmap = lambda f, x: list(map(f, x))
 
 def print_players_from_plants(plants):
     for player in set([plant.owner for plant in plants]):
-        print player
+        print(player)
 
 def create_step_function(steps):
-    xs = map(first, steps)
-    ys = map(second, steps)
+    xs = list(map(first, steps))
+    ys = list(map(second, steps))
     # get_break_point is the first point at which load <= x
 
     def get_break_point(load):
@@ -49,7 +49,7 @@ def create_step_function(steps):
         except ValueError:
             warn("Couldn't find a valid breakpoint")
             x = 0
-        print 'load is at {}'.format(load)
+        print('load is at {}'.format(load))
         return x
     return lambda load: ys[get_break_point(load)], lambda load: get_break_point(load)
 
@@ -58,14 +58,14 @@ def get_intersection(f1, f2):
         return f2
     else:
         optim = scipy.optimize.minimize(lambda x: (f2(x[0]) - f1(x[0]))**2, x0=0)
-        print "x1: {}, y1: {}, y2: {}".format(optim.x[0], f1(optim.x), f2(optim.x))
+        print("x1: {}, y1: {}, y2: {}".format(optim.x[0], f1(optim.x), f2(optim.x)))
         return optim.x[0]
 
 # Game Objects
 class GameState(object):
     def __init__(self):
         self.noise_scale = 0
-        self.auction_type = 'discrete' # can also be discrete
+        self.auction_type = 'uniform' # can also be discrete
         self.cur_day = 1
         self.cur_hour = 1
         self.breakpoints = []
@@ -105,18 +105,18 @@ class GameState(object):
             return partial(self.demand_fn, base_demand=base_demand)
     
     def switch_auction_type(self):
-        if self.cur_day == 3 or self.cur_day == 4:
+        if self.cur_day == 1 or self.cur_day == 2:
             self.auction_type = 'uniform'
         else:
             self.auction_type = 'discrete'
 
     def run_hour(self, plant_bids, auto_end_day=False):
         # tuples of (plant, bid)
-        plants, bids = map(first, plant_bids), map(second, plant_bids)
+        plants, bids = list(map(first, plant_bids)), list(map(second, plant_bids))
         price_fn, sorted_plants, breakpoint_fn = self.construct_price_curve(plant_bids)
 
         self.str_sorted_bids = [(plant.name, bid) for plant, bid in sorted_plants]
-        print self.str_sorted_bids
+        print(self.str_sorted_bids)
 
         demand_fn = self.construct_demand_curve()
         true_demand = get_intersection(price_fn, demand_fn)
@@ -135,12 +135,12 @@ class GameState(object):
             assert leftover_electricity >= 0
             
             if leftover_electricity == 0:
-                print "All electricity used up"
+                print("All electricity used up")
 
             electricity_used = min(leftover_electricity, plant.capacity)
             price_per_mwh = price_per_mwh_fn(plant)
-            print "Plant {} used {} MWh of electricity at ${}/MWh"\
-                  .format(plant.name, electricity_used, price_per_mwh)
+            print("Plant {} used {} MWh of electricity at ${}/MWh"\
+                  .format(plant.name, electricity_used, price_per_mwh))
 
             plant.log_cost(electricity_used)
             plant.log_profit(price_per_mwh, electricity_used)
@@ -162,7 +162,7 @@ class GameState(object):
             plant.reset()
 
         self.switch_auction_type()
-        print "Day ended"
+        print("Day ended")
         print_players_from_plants(plants)
         self.cur_hour = 1
         self.cur_day += 1
@@ -221,7 +221,7 @@ class Plant(object):
         self.costs = []
         self.profits = []
         self.electricity_used = []
-        print "Resetting. Name: {}, Costs: {}, Profits: {}, Electricity Used: {}".format(self.name, self.costs, self.profits, self.electricity_used)
+        print("Resetting. Name: {}, Costs: {}, Profits: {}, Electricity Used: {}".format(self.name, self.costs, self.profits, self.electricity_used))
 
         self.bid = 0
 
@@ -248,7 +248,7 @@ class Plant(object):
     
     def transfer_profit(self):
         total_profits = sum(self.profits)
-        print "Transfering {:,} to {}".format(total_profits, self.owner.name)
+        print("Transfering {:,} to {}".format(total_profits, self.owner.name))
         self.owner.money += total_profits
         self.profits = []
     

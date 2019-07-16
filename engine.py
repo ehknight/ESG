@@ -13,6 +13,7 @@ from warnings import warn
 from utils import reset_bids
 
 # Globals
+interest_rate = 0.05
 
 TESTING = False
 
@@ -160,7 +161,6 @@ class GameState(object):
         for plant in plants:
             plant.transfer(day_end=True)
             plant.reset()
-
         self.switch_auction_type()
         print("Day ended")
         print_players_from_plants(plants)
@@ -252,6 +252,14 @@ class Plant(object):
         self.owner.money += total_profits
         self.profits = []
     
+    def accumulate_interest(self):
+        self.owner.money *= 1 + interest_rate
+
     def transfer(self, day_end=False):
         self.transfer_cost(day_end)
         self.transfer_profit()
+        print("Pre-interest:" + str(self.owner.money))
+        self.accumulate_interest()
+        print("Post-interest:" + str(self.owner.money))
+
+

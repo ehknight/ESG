@@ -24,21 +24,39 @@
     </ul>
     {% endif %} {% endwith %}
     <h1>Player page: {{name}}</h1>
+    {% if hour < 5 %}
     <h3>Day {{day}}, hour {{hour}} | Auction type: {{auction_type}}</h3>
+    {% endif %} 
+    {% if hour == 5 %}
+    <h3>End of day {{day}} | Auction type: {{auction_type}}</h3>
+    {% endif %}
     <b>Demands: </b> {{demands}} | <b>Breakpoints: </b> {{breakpoints}} | <b>Sorted Bids/Capacities: </b> {{sorted_bids}} <br>
     <b>Player info:</b> {{player_info}}
     {{table}}
     <h3>Bidding</h3>
-    <form action="" method="post">
+    <form action="" method="POST" name="form">
         {{ form.csrf }}
-
-        <div class="input portfolio">
-            {{ form.plant.label }} {{ form.plant }}
+        <div>
+            <table>
+                <style>
+                    input,
+                    textarea,
+                    select,
+                    fieldset { margin-bottom: 0rem; }
+                </style>
+                <tr>
+                    <th> Plant Name </th>
+                    <th> Bid </th>
+                </tr>
+                {% for plantbid in form.plantbids %}
+                <tr>
+                    <td>{{ plantbid.plant_name.data }}</td>
+                    <td>{{ plantbid.bid }}</td>
+                </tr>
+                {% endfor %}
+            </table>
         </div>
-        <div class="input bid">
-            {{ form.bid.label }} {{ form.bid }}
-        </div>
-        <div class="input submit">
+        <div class="input sumbit">
             <input type="submit" value="Submit" />
         </div>
     </form>

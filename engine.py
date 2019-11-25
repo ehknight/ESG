@@ -24,7 +24,6 @@ if TESTING:
 else:
     demand_csv = pd.read_csv("csv/demand.csv")
     portfolio_csv = pd.read_csv("csv/portfolios.csv")
-    print(portfolio_csv)
     users_csv = pd.read_csv("csv/users.csv")
 
 # Utility Functions
@@ -44,8 +43,10 @@ def create_step_function(steps):
     def get_break_point(load):
         try:
             sum_xs = [sum(xs[:i+1]) for i, _ in enumerate(xs)]
+            # print(sum_xs)
             assert len(xs) == len(sum_xs)
             x_greater_than_load = lmap(lambda x: load <= x, sum_xs)
+            # print(x_greater_than_load)
             x = x_greater_than_load.index(True)
         except ValueError:
             warn("Couldn't find a valid breakpoint")
@@ -85,7 +86,17 @@ class GameState(object):
     def construct_price_curve(self, plant_bids):
         # plant_bids is tuples of (plant, bid)
         sorted_plants = sorted(plant_bids, key=second)
+        plant_MWrange_bid = [] # [[plant, xstart, xend, bid]]
+        used_MW = 0
+        # sum_xs = [sum(xs[:i+1]) for i, _ in enumerate(xs)]
+        for (plant, bid) in sorted_plants:
+            a = [plant, used_MW, used_MW + plant.capacity, bid]
+            plant_MWrange_bid.append(a)
+            used_MW += plant.capacity
+        # print("tag01")
+        # print(plant_MWrange_bid)
         plants_capacity = [(plant.capacity, bid) for plant, bid in sorted_plants]
+        # print(plants_capacity)
         step_fn, breakpoint_fn = create_step_function(plants_capacity)
         return step_fn, sorted_plants, breakpoint_fn
 
@@ -112,60 +123,72 @@ class GameState(object):
             self.auction_type = 'discrete'
 
     def run_hour(self, plant_bids, auto_end_day=False):
-        # tuples of (plant, bid)
+            
         plants, bids = list(map(first, plant_bids)), list(map(second, plant_bids))
-        price_fn, sorted_plants, breakpoint_fn = self.construct_price_curve(plant_bids)
 
-        self.str_sorted_bids = [(plant.name, bid) for plant, bid in sorted_plants]
-        print(self.str_sorted_bids)
+        if self.cur_hour < 5: # The fifth hour allows us to see the results of hour four. It is not a true production hour.
+            # tuples of (plant, bid)
+            price_fn, sorted_plants, breakpoint_fn = self.construct_price_curve(plant_bids)
+            print(sorted_plants)
+            self.str_sorted_bids = [(plant.name, bid) for plant, bid in sorted_plants]
+            print(self.str_sorted_bids)
 
-        demand_fn = self.construct_demand_curve()
-        true_demand = get_intersection(price_fn, demand_fn)
-        # self.breakpoints.append(breakpoint_fn(true_demand))
-        total_activated_so_far = 0
+            demand_fn = self.construct_demand_curve()
+            true_demand = get_intersection(price_fn, demand_fn)
+            self.demands.append(true_demand)
+            print("tag02")
+            print(true_demand)
+            # self.breakpoints.append(breakpoint_fn(true_demand))
+            total_activated_so_far = 0
 
-        if self.auction_type == 'uniform':
-            price_per_mwh_fn = lambda plant: price_fn(true_demand)
-        elif self.auction_type == 'discrete':
-            price_per_mwh_fn = lambda plant: bids[plants.index(plant)]
-        else:
-            raise ValueError
+            if self.auction_type == 'uniform':
+                price_per_mwh_fn = lambda plant: price_fn(true_demand)
+            elif self.auction_type == 'discrete':
+                price_per_mwh_fn = lambda plant: bids[plants.index(plant)]
+            else:
+                raise ValueError
 
-        for plant, bid in sorted_plants:
-            leftover_electricity = true_demand - total_activated_so_far
-            assert leftover_electricity >= 0
+            for plant, bid in sorted_plants:
+                leftover_electricity = true_demand - total_activated_so_far
+                assert leftover_electricity >= 0
+                
+                if leftover_electricity == 0:
+                    print("All electricity used up")
+
+                electricity_used = min(leftover_electricity, plant.capacity)
+                price_per_mwh = price_per_mwh_fn(plant)
+                print("Plant {} used {} MWh of electricity at ${}/MWh"\
+                    .format(plant.name, electricity_used, price_per_mwh))
+
+                plant.log_cost(electricity_used)
+                plant.log_profit(price_per_mwh, electricity_used)
+                
+                total_activated_so_far += electricity_used
             
-            if leftover_electricity == 0:
-                print("All electricity used up")
+            print_players_from_plants(plants)
+            reset_bids(plants)        
 
-            electricity_used = min(leftover_electricity, plant.capacity)
-            price_per_mwh = price_per_mwh_fn(plant)
-            print("Plant {} used {} MWh of electricity at ${}/MWh"\
-                  .format(plant.name, electricity_used, price_per_mwh))
-
-            plant.log_cost(electricity_used)
-            plant.log_profit(price_per_mwh, electricity_used)
-            
-            total_activated_so_far += electricity_used
-        
-        print_players_from_plants(plants)
-        reset_bids(plants)
         self.cur_hour += 1
-        if self.cur_hour > 4:
+        if self.cur_hour > 5:
             self.end_day(plants)
-        self.demands.append(true_demand)
 
     def end_day(self, plants):
         self.demands = []
         self.breakpoints = []
         for plant in plants:
             plant.transfer(day_end=True)
-            plant.reset()
-        self.switch_auction_type()
-        print("Day ended")
+            plant.reset()      
+        for player in set([plant.owner for plant in plants]):
+            print("Pre-interest:" + str(player.money))
+            player.accumulate_interest()
+            print("Post-interest:" + str(player.money))
         print_players_from_plants(plants)
         self.cur_hour = 1
         self.cur_day += 1
+        self.switch_auction_type()
+        print("Day ended")
+
+
 
 class Player(object):
     def __init__(self, name, starting_money):
@@ -199,6 +222,9 @@ class Player(object):
         self.bids[plant] = bid
         plant.bid = bid
     
+    def accumulate_interest(self):
+        self.money *= 1 + interest_rate
+
     def __str__(self):
         return "\nName: {} | Plants owned: {} | Total money: ${}"\
                 .format(self.name, [plant.name for plant in self.plants], self.money)
@@ -243,6 +269,7 @@ class Plant(object):
         if day_end:
             self.costs.append(self.o_and_m)
         total_costs = sum(self.costs)
+        print("Transfering {:,} to {}".format(total_costs, self.owner.name))
         self.owner.money -= total_costs
         self.costs = []
     
@@ -252,14 +279,8 @@ class Plant(object):
         self.owner.money += total_profits
         self.profits = []
     
-    def accumulate_interest(self):
-        self.owner.money *= 1 + interest_rate
-
     def transfer(self, day_end=False):
         self.transfer_cost(day_end)
         self.transfer_profit()
-        print("Pre-interest:" + str(self.owner.money))
-        self.accumulate_interest()
-        print("Post-interest:" + str(self.owner.money))
 
 

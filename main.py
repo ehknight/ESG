@@ -1,5 +1,5 @@
 from flask import Flask, render_template, flash, request, session
-from wtforms import Form, FloatField, TextField, TextAreaField, validators, StringField, SubmitField, SelectField
+from wtforms import Form, FloatField, TextField, TextAreaField, validators, StringField, SubmitField, SelectField, FieldList, FormField
 from flask_login import login_required, LoginManager, current_user
 from collections import OrderedDict
 import flask_login
@@ -90,6 +90,14 @@ def mainhtml():
 
 ########## FORMS ETC ##########
 
+class BidForm(Form):
+    plant_name = StringField('plant_name')
+    bid = FloatField('bid')
+
+class PortfolioForm(Form):
+    title = 'title'
+    plantbids = FieldList(FormField(BidForm))
+
 @login_required
 def construct_form(current_user):
     global players
@@ -98,6 +106,26 @@ def construct_form(current_user):
         plant = SelectField('Plants', choices=plant_names)
         bid = FloatField('Bid')
     return ReusableForm
+
+# @login_required
+# def create_portfolio_form(current_user):
+#     global players
+#     class BidForm(Form):
+#         plant_name = StringField('plant_name')
+#         bid = FloatField('bid')
+#     class PortfolioForm(Form):
+#         title = StringField('title')
+#         # title.data = str(current_user.id)
+#         plant
+#         for plant in players[current_user.id].plants:
+#             bid_form = BidForm()
+#             bid_form.plant_name = plant.name
+#             bid_form.bid = plant.bid
+#             portfolio_form.plantbids.append_entry(bid_form)
+
+#     return portfolio_form
+
+    
 
 ########## WEB CONTROL ##########
 @app.route('/static/<path:path>')
@@ -140,21 +168,62 @@ def playerview():
     else:
         user = current_user
         player = players[user.id]
-    form = construct_form(user)(request.form)
- 
+    # form = construct_form(user)(request.form)
+
+    form = PortfolioForm()
+    form.title = str(user.id)
+    for plant in player.plants:
+        # print(plant.name)
+        bid_form = BidForm()
+        bid_form.plant_name = plant.name
+        bid_form.bid = plant.bid
+        print(bid_form.data)
+        print("appended")
+        form.plantbids.append_entry(bid_form)
+        # print(plant.name)
+        # print(bid_form.plant_name)
+
+    # form = portfolio_form(request.form)
+    print(len(form.plantbids.entries))
+
     print(form.errors)
     if request.method == 'POST':
-        plant_name = request.form['plant']
-        bid = request.form['bid']
- 
+
+        bids = []
+
+        # print(request.form.to_dict(flat=True).items)
+
+        request_dict = request.form.to_dict(flat=True)
+
+        # print(request_dict.items())
+
+        for [_, bid] in request_dict.items():
+            bids.append(bid)
+        
+        plant_bid_list = zip(player.plants, bids)
+        print(plant_bid_list)
+
+        # for plant, bid in plant_bid_list:
+        #     plant.bid = bid
+        #     print(plant.bid)
+
+    
         if form.validate():
-            bid = float(bid)
-            bid = max(0., min(bid, 500.))
-            flash('Bid {} on plant {}'.format(bid, plant_name))
-            player.bid(plant_name, bid)
+            for [plant, bid] in plant_bid_list:
+                bid = float(bid)
+                bid = max(0., min(bid, 500.))
+                flash('Bid {} on plant {}'.format(bid, plant.name))
+                player.bid(plant.name, bid)
+            return flask.redirect(flask.url_for('playerview'))
         else:
             flash(form.errors)
             flash('There are errors in the form. Please double check')
+
+        print(dict(request.form))
+
+        for plantbid in form.plantbids:
+            print(plantbid.data)
+
     table = make_plants_table(player.plants)
     kwargs = {
         'table':table, 'form':form, 'name': user.id,
@@ -163,6 +232,8 @@ def playerview():
         'demands': state.demands, 'breakpoints': state.breakpoints,
         'sorted_bids': state.str_sorted_bids
     }
+
+    # print(portfolio_form.plantbids[0].plant_name.data)
 
     return render_template('player.html', **kwargs)
 

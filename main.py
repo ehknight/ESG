@@ -106,25 +106,6 @@ def construct_form(current_user):
         plant = SelectField('Plants', choices=plant_names)
         bid = FloatField('Bid')
     return ReusableForm
-
-# @login_required
-# def create_portfolio_form(current_user):
-#     global players
-#     class BidForm(Form):
-#         plant_name = StringField('plant_name')
-#         bid = FloatField('bid')
-#     class PortfolioForm(Form):
-#         title = StringField('title')
-#         # title.data = str(current_user.id)
-#         plant
-#         for plant in players[current_user.id].plants:
-#             bid_form = BidForm()
-#             bid_form.plant_name = plant.name
-#             bid_form.bid = plant.bid
-#             portfolio_form.plantbids.append_entry(bid_form)
-
-#     return portfolio_form
-
     
 
 ########## WEB CONTROL ##########
@@ -191,26 +172,19 @@ def playerview():
 
         bids = []
 
-        # print(request.form.to_dict(flat=True).items)
-
         request_dict = request.form.to_dict(flat=True)
 
-        # print(request_dict.items())
-
-        for [_, bid] in request_dict.items():
-            bids.append(bid)
-        
-        plant_bid_list = zip(player.plants, bids)
-        print(plant_bid_list)
-
-        # for plant, bid in plant_bid_list:
-        #     plant.bid = bid
-        #     print(plant.bid)
-
-    
         if form.validate():
+            for [_, bid] in request_dict.items():
+                bids.append(bid)
+            plant_bid_list = zip(player.plants, bids)
+            print(plant_bid_list)
+
             for [plant, bid] in plant_bid_list:
-                bid = float(bid)
+                try: # HACK: FloatField validation broken? So we're catching it here.  
+                    bid = float(bid)
+                except:
+                    bid = 0.
                 bid = max(0., min(bid, 500.))
                 flash('Bid {} on plant {}'.format(bid, plant.name))
                 player.bid(plant.name, bid)

@@ -2,6 +2,12 @@
 # NOTE: BIDS ARE PLACED ON A DAY-TO-DAY BASIS
 # also make sure to take integral in the case of sloped demand curve
 
+from collections import defaultdict
+
+from bokeh.plotting import figure, output_file, show
+from bokeh.models import ColumnDataSource, HoverTool
+from bokeh.resources import CDN
+from bokeh.embed import file_html, components
 
 import numpy as np
 import scipy.optimize
@@ -61,7 +67,85 @@ def get_intersection(f1, f2):
     else:
         optim = scipy.optimize.minimize(lambda x: (f2(x[0]) - f1(x[0]))**2, x0=0)
         print("x1: {}, y1: {}, y2: {}".format(optim.x[0], f1(optim.x), f2(optim.x)))
-        return optim.x[0]
+        # If f1(optim.x) > f2(optim.x), then we've got a situation in which the demand curve goes through a gap.
+        # We'll handle this case when we're activating the plants. In order to do so, we return the demand price
+        # so that we can compare it to the plant bid price.
+        return optim.x[0], f2(optim.x)[0] 
+
+def create_chart(sorted_plants, day, hour, intercept_x, intercept_y):
+
+    output_file("chart.html")
+
+    plant_id_mw_bids = [[p.portfolio, p.id, p.capacity, b] for p, b in sorted_plants]
+
+    sorted_p_i_m_bids = sorted(plant_id_mw_bids, key=lambda x: x[3])
+
+    plant_MWrange_bid = [] # [[portfolio, id, xstart, xend, bid]]
+    used_MW = 0
+
+    for (p, i, mw, bid) in sorted_p_i_m_bids:
+        a = [p, i, used_MW, used_MW + mw, bid]
+        plant_MWrange_bid.append(a)
+        used_MW += mw
+
+    colors = ['#57BCCD', '#3976AF', '#F08636', '#529D3F', '#C63A33', '#8D6AB8', '#85594E', '#D57EBF']
+
+    price_curve = defaultdict(list)
+    for [p, i, xmin, xmax, y] in plant_MWrange_bid:
+        price_curve['xs'].append([xmin, xmax])
+        price_curve['ys'].append([y, y])
+        price_curve['portfolio_name'].append(str(portfolio_csv.loc[portfolio_csv['portfolio'] == p, 'portfolioname'].unique()[0]))    
+        price_curve['plant_name'].append(str(portfolio_csv.loc[portfolio_csv['id'] == i, 'name'].unique()[0]))
+        price_curve['bid'].append(y)
+        price_curve['color'].append(colors[p - 1])
+
+    source = ColumnDataSource(price_curve)
+
+    plot_title = "Day " + str(day) + " hour " + str(hour) + " supply and demand"
+
+    plot = figure(title=plot_title, x_axis_label='MWH', y_axis_label='PRICE ($/MWH)', 
+                  sizing_mode='stretch_width', height=400)
+
+    supply_plot = plot.multi_line(xs='xs', ys='ys', line_width=4, line_color='color', line_alpha=0.6,
+                                  hover_line_color='color', hover_line_alpha=1.0, source=source)
+
+    plot.add_tools(HoverTool(renderers=[supply_plot], show_arrow=False, line_policy='interp', 
+                             point_policy='follow_mouse', attachment='above', tooltips=[
+        ('Portfolio', '@portfolio_name'),
+        ('Plant', '@plant_name'),
+        ('$/MWh', '@bid')
+    ]))
+
+    highest_price = plant_MWrange_bid[-1][4]
+    demand_ys = [highest_price + 10., 0.]
+
+    cur_demand_row = demand_csv[demand_csv['round'] == day][demand_csv['hour'] == hour]
+    load = cur_demand_row.iloc[0]['load']
+    loadslope = cur_demand_row.iloc[0]['loadslope']
+
+    def demand_y_to_x(y): 
+        return (float(y) / float(loadslope)) + load
+
+    demand_xs = list(map(demand_y_to_x, demand_ys))
+
+    plot.line(x=demand_xs, y=demand_ys, line_width=4, color='black')
+
+    intercept = {'x': [float('%.2f'%(intercept_x))], 'y': [float('%.2f'%(intercept_y))]}
+
+    intercept_plot = plot.circle('x', 'y', color='black', size=6, source=intercept)
+
+    plot.add_tools(HoverTool(renderers=[intercept_plot], point_policy='snap_to_data', attachment='below',
+                             tooltips=[
+        ("", "(@x{(0.0000)} MWh, @y $/MWh)"),
+    ]))
+
+
+    plot.toolbar.active_drag = None
+
+
+    return components(plot)
+
+
 
 # Game Objects
 class GameState(object):
@@ -72,7 +156,10 @@ class GameState(object):
         self.cur_hour = 1
         self.breakpoints = []
         self.demands = []
+        self.prices = []
         self.str_sorted_bids = []
+        self.chart_div = ''
+        self.chart_script = ''
 
         self.get_cur_demand_row = lambda: demand_csv[demand_csv['round'] == self.cur_day]\
                                          [demand_csv['hour'] == self.cur_hour]
@@ -93,10 +180,9 @@ class GameState(object):
             a = [plant, used_MW, used_MW + plant.capacity, bid]
             plant_MWrange_bid.append(a)
             used_MW += plant.capacity
-        # print("tag01")
-        # print(plant_MWrange_bid)
+
         plants_capacity = [(plant.capacity, bid) for plant, bid in sorted_plants]
-        # print(plants_capacity)
+
         step_fn, breakpoint_fn = create_step_function(plants_capacity)
         return step_fn, sorted_plants, breakpoint_fn
 
@@ -118,9 +204,9 @@ class GameState(object):
     
     def switch_auction_type(self):
         if self.cur_day == 1 or self.cur_day == 2:
-            self.auction_type = 'uniform'
-        else:
             self.auction_type = 'discrete'
+        else:
+            self.auction_type = 'uniform'
 
     def run_hour(self, plant_bids, auto_end_day=False):
             
@@ -129,16 +215,43 @@ class GameState(object):
         if self.cur_hour < 5: # The fifth hour allows us to see the results of hour four. It is not a true production hour.
             # tuples of (plant, bid)
             price_fn, sorted_plants, breakpoint_fn = self.construct_price_curve(plant_bids)
-            print(sorted_plants)
             self.str_sorted_bids = [(plant.name, bid) for plant, bid in sorted_plants]
-            print(self.str_sorted_bids)
 
             demand_fn = self.construct_demand_curve()
-            true_demand = get_intersection(price_fn, demand_fn)
-            self.demands.append(true_demand)
-            print("tag02")
-            print(true_demand)
-            # self.breakpoints.append(breakpoint_fn(true_demand))
+            true_demand, optim_price = get_intersection(price_fn, demand_fn)
+            optim_price += 0.001 #Correct approximation issues
+            print("true_demand:", str(true_demand), "price_fn(true_demand):", 
+                  str(price_fn(true_demand)), "optim_price:", str(optim_price))
+
+            price_at_true = min(abs(price_fn(true_demand)), abs(optim_price))
+
+            # if price_fn(true_demand) > optim_price: 
+            total_activated_so_far = 0
+            for plant, bid in sorted_plants:
+                leftover_electricity = true_demand - total_activated_so_far
+                assert leftover_electricity >= 0
+                print("price at true:", price_at_true, "bid:", bid, "remaining elec:", leftover_electricity)
+                    
+                print("Bid: ", bid, "Optim: ", optim_price)
+
+                if leftover_electricity > 0:                            
+                    if bid > optim_price:
+                        # Then our demand curve has slipped into a gap between supply steps, and we shouldn't be producing
+                        electricity_used = 0
+                        # Eliminate erroneous excess demand
+                        true_demand -= leftover_electricity
+                        print("Corrected true demand:", str(true_demand))
+                        break
+                    else:
+                        total_activated_so_far += min(leftover_electricity, plant.capacity)
+                else:
+                    print("all electricity used up!")
+                    electricity_used = 0
+
+
+            self.demands.append(float('%.2f'%(true_demand)))
+            self.prices.append(float('%.2f'%(price_at_true)))
+            self.breakpoints.append(breakpoint_fn(true_demand))
             total_activated_so_far = 0
 
             if self.auction_type == 'uniform':
@@ -157,6 +270,7 @@ class GameState(object):
 
                 electricity_used = min(leftover_electricity, plant.capacity)
                 price_per_mwh = price_per_mwh_fn(plant)
+
                 print("Plant {} used {} MWh of electricity at ${}/MWh"\
                     .format(plant.name, electricity_used, price_per_mwh))
 
@@ -164,9 +278,12 @@ class GameState(object):
                 plant.log_profit(price_per_mwh, electricity_used)
                 
                 total_activated_so_far += electricity_used
-            
+
+            self.chart_script, self.chart_div = create_chart(sorted_plants, self.cur_day, self.cur_hour, true_demand, price_at_true)
+
             print_players_from_plants(plants)
-            reset_bids(plants)        
+            reset_bids(plants)      
+
 
         self.cur_hour += 1
         if self.cur_hour > 5:
@@ -174,6 +291,7 @@ class GameState(object):
 
     def end_day(self, plants):
         self.demands = []
+        self.prices = []
         self.breakpoints = []
         for plant in plants:
             plant.transfer(day_end=True)
@@ -208,7 +326,9 @@ class Player(object):
                       'cost_per_mwh': raw_plant['fuelcost'] + raw_plant['varom'],
                       'heat_rate': 0, # NOTE: portfolio doesn't define heat rate
                       'fuel_price': 0, # NOTE: portfolio doesn't define fuel price
-                      'o_and_m': raw_plant['fixom']}
+                      'o_and_m': raw_plant['fixom'],
+                      'portfolio': raw_plant['portfolio'],
+                      'id': raw_plant['id']}
             plant = Plant(**kwargs)
             plant.owner = self
             self.plants.append(plant)
@@ -231,7 +351,7 @@ class Player(object):
 
 class Plant(object):
     def __init__(self, name, capacity, cost_per_mwh, 
-                 heat_rate, fuel_price, o_and_m):
+                 heat_rate, fuel_price, o_and_m, portfolio, id):
         # mw -> capacity; fuelcost+varom -> cost; 
         self.name = name
         self.capacity = capacity # MW
@@ -239,6 +359,8 @@ class Plant(object):
         self.heat_rate = heat_rate # MMBTU/MWh
         self.fuel_price = fuel_price # $/MMBTU
         self.o_and_m = o_and_m # $/day
+        self.portfolio = portfolio
+        self.id = id
         self.owner = None
         self.reset()
     

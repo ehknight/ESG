@@ -136,8 +136,10 @@ def adminview():
               for name, player in players.items()]
 
     return render_template('admin.html', player_info=tables, auction_type=state.auction_type,
-                            day=state.cur_day, hour=state.cur_hour, demands=state.demands,
-                            breakpoints=state.breakpoints, sorted_bids=state.str_sorted_bids)
+                            day=state.cur_day, hour=state.cur_hour, demands=state.demands, 
+                            prices=state.prices, breakpoints=state.breakpoints, 
+                            sorted_bids=state.str_sorted_bids, chart_div=state.chart_div, 
+                            chart_script=state.chart_script)
 
 @login_required
 @app.route("/player", methods=['GET', 'POST'])
@@ -158,8 +160,6 @@ def playerview():
         bid_form = BidForm()
         bid_form.plant_name = plant.name
         bid_form.bid = plant.bid
-        print(bid_form.data)
-        print("appended")
         form.plantbids.append_entry(bid_form)
         # print(plant.name)
         # print(bid_form.plant_name)
@@ -178,7 +178,6 @@ def playerview():
             for [_, bid] in request_dict.items():
                 bids.append(bid)
             plant_bid_list = zip(player.plants, bids)
-            print(plant_bid_list)
 
             for [plant, bid] in plant_bid_list:
                 try: # HACK: FloatField validation broken? So we're catching it here.  
@@ -195,16 +194,14 @@ def playerview():
 
         print(dict(request.form))
 
-        for plantbid in form.plantbids:
-            print(plantbid.data)
-
     table = make_plants_table(player.plants)
     kwargs = {
         'table':table, 'form':form, 'name': user.id,
         'day': state.cur_day, 'hour': state.cur_hour,
         'auction_type': state.auction_type, 'player_info': str(player),
-        'demands': state.demands, 'breakpoints': state.breakpoints,
-        'sorted_bids': state.str_sorted_bids
+        'demands': state.demands, 'prices': state.prices,
+        'breakpoints': state.breakpoints, 'sorted_bids': state.str_sorted_bids, 
+        'chart_div': state.chart_div, 'chart_script': state.chart_script
     }
 
     # print(portfolio_form.plantbids[0].plant_name.data)

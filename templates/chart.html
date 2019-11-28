@@ -1,0 +1,85 @@
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+  
+  <head>
+    
+      <meta charset="utf-8">
+      <title>price chart</title>
+      
+      
+        
+          
+        
+        
+          
+        <script type="text/javascript" src="https://cdn.pydata.org/bokeh/release/bokeh-1.4.0.min.js"></script>
+        <script type="text/javascript">
+            Bokeh.set_log_level("info");
+        </script>
+        
+      
+      
+    
+  </head>
+  
+  
+  <body>
+    
+      
+        
+          
+          
+            
+              <div class="bk-root" id="722bed3f-e9a5-4cf0-a858-32a624ca1c49" data-root-id="1143"></div>
+            
+          
+        
+      
+      
+        <script type="application/json" id="1282">
+          {"64331844-ed70-41ef-9b2a-854d1ce2b992":{"roots":{"references":[{"attributes":{"source":{"id":"1142","type":"ColumnDataSource"}},"id":"1182","type":"CDSView"},{"attributes":{"line_alpha":{"value":0.1},"line_color":{"value":"#1f77b4"},"line_width":{"value":4},"xs":{"field":"xs"},"ys":{"field":"ys"}},"id":"1179","type":"MultiLine"},{"attributes":{},"id":"1169","type":"HelpTool"},{"attributes":{"text":"Day 1 hour 2"},"id":"1144","type":"Title"},{"attributes":{"ticker":{"id":"1155","type":"BasicTicker"}},"id":"1158","type":"Grid"},{"attributes":{},"id":"1155","type":"BasicTicker"},{"attributes":{"line_color":{"field":"color"},"line_width":{"value":4},"xs":{"field":"xs"},"ys":{"field":"ys"}},"id":"1180","type":"MultiLine"},{"attributes":{"bottom_units":"screen","fill_alpha":{"value":0.5},"fill_color":{"value":"lightgrey"},"left_units":"screen","level":"overlay","line_alpha":{"value":1.0},"line_color":{"value":"black"},"line_dash":[4,4],"line_width":{"value":2},"render_mode":"css","right_units":"screen","top_units":"screen"},"id":"1191","type":"BoxAnnotation"},{"attributes":{"active_drag":null,"active_inspect":"auto","active_multi":null,"active_scroll":"auto","active_tap":"auto","tools":[{"id":"1164","type":"PanTool"},{"id":"1165","type":"WheelZoomTool"},{"id":"1166","type":"BoxZoomTool"},{"id":"1167","type":"SaveTool"},{"id":"1168","type":"ResetTool"},{"id":"1169","type":"HelpTool"},{"id":"1183","type":"HoverTool"}]},"id":"1170","type":"Toolbar"},{"attributes":{"axis_label":"MWH","formatter":{"id":"1190","type":"BasicTickFormatter"},"ticker":{"id":"1155","type":"BasicTicker"}},"id":"1154","type":"LinearAxis"},{"attributes":{"callback":null,"data":{"bid":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"color":["#57BCCD","#57BCCD","#57BCCD","#57BCCD","#57BCCD","#57BCCD","#3976AF","#3976AF","#3976AF","#3976AF","#3976AF","#3976AF","#3976AF","#F08636","#F08636","#F08636","#F08636","#F08636"],"plant_name":["FOUR_CORNERS","ALAMITOS_7","HUNTINGTON_BEACH_1-2","HUNTINGTON_BEACH_5","REDONDO_5-6","REDONDO_7-8","EL_SEGUNDO_1-2","EL_SEGUNDO_3-4","LONG_BEACH","NORTH_ISLAND","ENCINA","KEARNY","SOUTH_BAY","MORRO_BAY_1-2","MORRO_BAY_3-4","MOSS_LANDING_6","MOSS_LANDING_7","OAKLAND"],"portfolio_name":["Big Coal","Big Coal","Big Coal","Big Coal","Big Coal","Big Coal","Big Gas","Big Gas","Big Gas","Big Gas","Big Gas","Big Gas","Big Gas","Bay Views","Bay Views","Bay Views","Bay Views","Bay Views"],"xs":[[0,1900],[1900,2150],[2150,2450],[2450,2600],[2600,2950],[2950,3900],[3900,4300],[4300,4950],[4950,5500],[5500,5650],[5650,6600],[6600,6800],[6800,7500],[7500,7835],[7835,8500],[8500,9250],[9250,10000],[10000,10150]],"ys":[[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]},"selected":{"id":"1192","type":"Selection"},"selection_policy":{"id":"1193","type":"UnionRenderers"}},"id":"1142","type":"ColumnDataSource"},{"attributes":{},"id":"1150","type":"LinearScale"},{"attributes":{"axis_label":"PRICE ($/MWH)","formatter":{"id":"1188","type":"BasicTickFormatter"},"ticker":{"id":"1160","type":"BasicTicker"}},"id":"1159","type":"LinearAxis"},{"attributes":{},"id":"1190","type":"BasicTickFormatter"},{"attributes":{},"id":"1160","type":"BasicTicker"},{"attributes":{},"id":"1152","type":"LinearScale"},{"attributes":{},"id":"1188","type":"BasicTickFormatter"},{"attributes":{},"id":"1164","type":"PanTool"},{"attributes":{"callback":null},"id":"1146","type":"DataRange1d"},{"attributes":{"below":[{"id":"1154","type":"LinearAxis"}],"center":[{"id":"1158","type":"Grid"},{"id":"1163","type":"Grid"}],"left":[{"id":"1159","type":"LinearAxis"}],"plot_height":400,"renderers":[{"id":"1181","type":"GlyphRenderer"}],"sizing_mode":"stretch_width","title":{"id":"1144","type":"Title"},"toolbar":{"id":"1170","type":"Toolbar"},"x_range":{"id":"1146","type":"DataRange1d"},"x_scale":{"id":"1150","type":"LinearScale"},"y_range":{"id":"1148","type":"DataRange1d"},"y_scale":{"id":"1152","type":"LinearScale"}},"id":"1143","subtype":"Figure","type":"Plot"},{"attributes":{"attachment":"above","callback":null,"line_policy":"interp","point_policy":"follow_mouse","show_arrow":false,"tooltips":[["Portfolio","@portfolio_name"],["Plant","@plant_name"],["$/MWh","@bid"]]},"id":"1183","type":"HoverTool"},{"attributes":{},"id":"1165","type":"WheelZoomTool"},{"attributes":{"callback":null},"id":"1148","type":"DataRange1d"},{"attributes":{"data_source":{"id":"1142","type":"ColumnDataSource"},"glyph":{"id":"1178","type":"MultiLine"},"hover_glyph":{"id":"1180","type":"MultiLine"},"muted_glyph":null,"nonselection_glyph":{"id":"1179","type":"MultiLine"},"selection_glyph":null,"view":{"id":"1182","type":"CDSView"}},"id":"1181","type":"GlyphRenderer"},{"attributes":{},"id":"1192","type":"Selection"},{"attributes":{"overlay":{"id":"1191","type":"BoxAnnotation"}},"id":"1166","type":"BoxZoomTool"},{"attributes":{},"id":"1193","type":"UnionRenderers"},{"attributes":{"dimension":1,"ticker":{"id":"1160","type":"BasicTicker"}},"id":"1163","type":"Grid"},{"attributes":{},"id":"1167","type":"SaveTool"},{"attributes":{"line_alpha":{"value":0.6},"line_color":{"field":"color"},"line_width":{"value":4},"xs":{"field":"xs"},"ys":{"field":"ys"}},"id":"1178","type":"MultiLine"},{"attributes":{},"id":"1168","type":"ResetTool"}],"root_ids":["1143"]},"title":"Bokeh Application","version":"1.4.0"}}
+        </script>
+        <script type="text/javascript">
+          (function() {
+            var fn = function() {
+              Bokeh.safely(function() {
+                (function(root) {
+                  function embed_document(root) {
+                    
+                  var docs_json = document.getElementById('1282').textContent;
+                  var render_items = [{"docid":"64331844-ed70-41ef-9b2a-854d1ce2b992","roots":{"1143":"722bed3f-e9a5-4cf0-a858-32a624ca1c49"}}];
+                  root.Bokeh.embed.embed_items(docs_json, render_items);
+                
+                  }
+                  if (root.Bokeh !== undefined) {
+                    embed_document(root);
+                  } else {
+                    var attempts = 0;
+                    var timer = setInterval(function(root) {
+                      if (root.Bokeh !== undefined) {
+                        clearInterval(timer);
+                        embed_document(root);
+                      } else {
+                        attempts++;
+                        if (attempts > 100) {
+                          clearInterval(timer);
+                          console.log("Bokeh: ERROR: Unable to run BokehJS code because BokehJS library is missing");
+                        }
+                      }
+                    }, 10, root)
+                  }
+                })(window);
+              });
+            };
+            if (document.readyState != "loading") fn();
+            else document.addEventListener("DOMContentLoaded", fn);
+          })();
+        </script>
+    
+  </body>
+  
+</html>

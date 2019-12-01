@@ -218,51 +218,53 @@ class GameState(object):
             self.str_sorted_bids = [(plant.name, bid) for plant, bid in sorted_plants]
 
             demand_fn = self.construct_demand_curve()
-            true_demand, optim_price = get_intersection(price_fn, demand_fn)
-            optim_price += 0.001 #Correct approximation issues
-            print("true_demand:", str(true_demand), "price_fn(true_demand):", 
-                  str(price_fn(true_demand)), "optim_price:", str(optim_price))
 
-            price_at_true = min(abs(price_fn(true_demand)), abs(optim_price))
+            # For each plant in sorted list:
+            # Check that demand at start of plant production is above the curve
+                # If not, stop production
+            # Use the intermediate value theorem to figure out if demand crosses supply
+                # If so, use optimization function
+                    # Find intersection and stop production
+                # If not, continue through the list
+            
+            market_demand = 0
+            market_price = 0
 
-            # if price_fn(true_demand) > optim_price: 
-            total_activated_so_far = 0
             for plant, bid in sorted_plants:
-                leftover_electricity = true_demand - total_activated_so_far
-                assert leftover_electricity >= 0
-                print("price at true:", price_at_true, "bid:", bid, "remaining elec:", leftover_electricity)
-                    
-                print("Bid: ", bid, "Optim: ", optim_price)
-
-                if leftover_electricity > 0:                            
-                    if bid > optim_price:
-                        # Then our demand curve has slipped into a gap between supply steps, and we shouldn't be producing
-                        electricity_used = 0
-                        # Eliminate erroneous excess demand
-                        true_demand -= leftover_electricity
-                        print("Corrected true demand:", str(true_demand))
+                start_x = market_demand 
+                end_x = start_x + plant.capacity # This gives us the x-coordinates of this portion of the supply curve
+                
+                demand_at_start_x = demand_fn(start_x)
+                print("Demand at start_x:", demand_at_start_x)
+                if demand_at_start_x < bid: 
+                    # Then this segement of the supply curve is always above demand
+                    # End with what market price, demand is currently set at
+                    break
+                else:
+                    demand_at_end_x = demand_fn(end_x)
+                    if (demand_at_start_x > bid and bid > demand_at_end_x):
+                        # Then IVT suggests that there's an intersection in here
+                        market_demand, market_price = get_intersection(price_fn, demand_fn)
                         break
                     else:
-                        total_activated_so_far += min(leftover_electricity, plant.capacity)
-                else:
-                    print("all electricity used up!")
-                    electricity_used = 0
+                        market_demand += plant.capacity
+                        market_price = bid
 
 
-            self.demands.append(float('%.2f'%(true_demand)))
-            self.prices.append(float('%.2f'%(price_at_true)))
-            self.breakpoints.append(breakpoint_fn(true_demand))
+            self.demands.append(float('%.2f'%(market_demand)))
+            self.prices.append(float('%.2f'%(market_price)))
+            self.breakpoints.append(breakpoint_fn(market_demand))
             total_activated_so_far = 0
 
             if self.auction_type == 'uniform':
-                price_per_mwh_fn = lambda plant: price_fn(true_demand)
+                price_per_mwh_fn = lambda plant: price_fn(market_demand)
             elif self.auction_type == 'discrete':
                 price_per_mwh_fn = lambda plant: bids[plants.index(plant)]
             else:
                 raise ValueError
 
             for plant, bid in sorted_plants:
-                leftover_electricity = true_demand - total_activated_so_far
+                leftover_electricity = market_demand - total_activated_so_far
                 assert leftover_electricity >= 0
                 
                 if leftover_electricity == 0:
@@ -279,7 +281,7 @@ class GameState(object):
                 
                 total_activated_so_far += electricity_used
 
-            self.chart_script, self.chart_div = create_chart(sorted_plants, self.cur_day, self.cur_hour, true_demand, price_at_true)
+            self.chart_script, self.chart_div = create_chart(sorted_plants, self.cur_day, self.cur_hour, market_demand, market_price)
 
             print_players_from_plants(plants)
             reset_bids(plants)      
@@ -296,10 +298,13 @@ class GameState(object):
         for plant in plants:
             plant.transfer(day_end=True)
             plant.reset()      
-        for player in set([plant.owner for plant in plants]):
-            print("Pre-interest:" + str(player.money))
-            player.accumulate_interest()
-            print("Post-interest:" + str(player.money))
+        # If we're on Day 4, transfer without interest (game ends right at the end of day 4)
+        if self.cur_day < 4:
+            for player in set([plant.owner for plant in plants]):
+                print("Accumulating interest for", player.name)
+                print("Pre-interest:" + str(player.money))
+                player.accumulate_interest()
+                print("Post-interest:" + str(player.money))
         print_players_from_plants(plants)
         self.cur_hour = 1
         self.cur_day += 1

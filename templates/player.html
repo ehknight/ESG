@@ -13,65 +13,81 @@
 </head>
 
 <body>
-    <div id="nav" class="fourteen columns">
+    <div class="container">
+        <div id="nav" class="fourteen columns" style="margin-bottom: 0px; border-bottom: 1px solid #eee;">
+            <ul>
+                <li><a href="player">Player Page</a></li>
+                <li><a href="admin">Admin Page</a></li>
+                <li><a href="login">Login</a></li>
+                <li><a href="logout">Logout</a></li>
+            </ul>
+        </div>
+        <div id="nav-separator" style="padding: 3rem 0;"></div>
+        {% with messages = get_flashed_messages(with_categories=true) %} {% if messages %}
         <ul>
-            <li><a href="player">Player Page</a></li>
-            <li><a href="admin">Admin Page</a></li>
-            <li><a href="login">Login</a></li>
-            <li><a href="logout">Logout</a></li>
+            {% for message in messages %}
+            <li>{{ message[1] }}</li>
+            {% endfor %}
         </ul>
-    </div>
+        {% endif %} {% endwith %}
 
-    {% with messages = get_flashed_messages(with_categories=true) %} {% if messages %}
-    <ul>
-        {% for message in messages %}
-        <li>{{ message[1] }}</li>
-        {% endfor %}
-    </ul>
-    {% endif %} {% endwith %}
-    <h1>Player page: {{name}}</h1>
-    {% if hour < 5 %}
-    <h3>Day {{day}}, hour {{hour}} | Auction type: {{auction_type}}</h3>
-    {% endif %} 
-    {% if hour == 5 %}
-    <h3>End of day {{day}} | Auction type: {{auction_type}}</h3>
-    {% endif %}    
-    {{chart_div|safe}}
-    {{chart_script|safe}}
-    <b>Demands: </b> {{demands}} <!--| <b>Breakpoints: </b> {{breakpoints}} --><br>
-    <b>Prices: </b> {{prices}}<br>
-    <b>Sorted Bids/Capacities: </b> {{sorted_bids}} <br>
-    <b>Player info:</b> {{player_info}}
-    {{table}}
-    {% if hour < 5 %}
-    <h3>Bidding</h3>
-    <form action="" method="POST" name="form">
-        {{ form.csrf }}
-        <div>
-            <table>
-                <style>
-                    input,
-                    textarea,
-                    select,
-                    fieldset { margin-bottom: 0rem; }
-                </style>
-                <tr>
-                    <th> Plant Name </th>
-                    <th> Bid </th>
-                </tr>
-                {% for plantbid in form.plantbids %}
-                <tr>
-                    <td>{{ plantbid.plant_name.data }}</td>
-                    <td>{{ plantbid.bid }}</td>
-                </tr>
-                {% endfor %}
-            </table>
+        {% if not(day == 1 and hour == 1)%}
+        <div id="chart" style="margin-top: 5rem;">
+            {{ chart_div|safe }}
+            {{ chart_script|safe }}
         </div>
-        <div class="input sumbit">
-            <input type="submit" value="Submit" />
+        {% endif %}
+        <div id="day-info" style="margin-top: 3rem; padding-bottom: 3rem;">
+            <b>Demands: </b> {{demands}}<br> 
+            <b>Prices: </b> {{prices}}<br>
+            <b>Sorted Bids/Capacities: </b> {{sorted_bids}} <br>
+        </div>        
+
+        <div class="docs-section" id="hour-day-auction_type" style="padding-top: 2rem; padding-bottom: 0rem;">
+            {% if hour < 5 %} 
+            <h4 class="docs-title">Day {{day}}, hour {{hour}} | Auction type: {{auction_type}}</h4> 
+            {% endif %} 
+            {% if hour == 5 %} 
+            <h4 class="docs-title">End of day {{day}} | Auction type: {{auction_type}}</h4> 
+            {% endif %}
         </div>
-    </form>        
-    {% endif %}
+        <div class="docs-section" id="player-info">
+            <h6 class="docs-header">Player Info</h6>
+            {{player_info}}
+            {{table}}
+        </div>
+        {% if hour < 5 %}
+        <div class="docs-section" id="bidding">
+            <h6 class="docs-header">Bidding</h6>
+            <form action="" method="POST" name="form">
+                {{ form.csrf }}
+                <div>
+                    <table>
+                        <style>
+                            input,
+                            textarea,
+                            select,
+                            fieldset { margin-bottom: 0rem; }
+                        </style>
+                        <tr>
+                            <th> Plant Name </th>
+                            <th> Bid </th>
+                        </tr>
+                        {% for plantbid in form.plantbids %}
+                        <tr>
+                            <td>{{ plantbid.plant_name.data }}</td>
+                            <td>{{ plantbid.bid }}</td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                </div>
+                <div class="input sumbit">
+                    <input class="button-primary" type="submit" value="Submit" />
+                </div>
+            </form>     
+        </div>   
+        {% endif %}
+    </div>
 </body>
 
 </html>

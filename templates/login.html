@@ -8,25 +8,28 @@
 </head>
 
 <body>
-    <div id="nav" class="fourteen columns">
-        <ul>
-            <li><a href="player">Player Page</a></li>
-            <li><a href="admin">Admin Page</a></li>
-            <li><a href="login">Login</a></li>
-            <li><a href="logout">Logout</a></li>
-        </ul>
+    <div class="container">
+        <div id="nav" class="fourteen columns" style="margin-bottom: 0px; border-bottom: 1px solid #eee;">
+            <ul>
+                <li><a href="player">Player Page</a></li>
+                <li><a href="admin">Admin Page</a></li>
+                <li><a href="login">Login</a></li>
+                <li><a href="logout">Logout</a></li>
+            </ul>
+        </div>
+        <div id="nav-separator" style="padding: 3rem 0;"></div>
+        
+        <div class="docs-section" id="login-form" style="border-top: 0px;">
+            <h1 class="docs-header">Login</h1>
+            <form action='login' method='POST'>
+                <input type='text' name='email' id='email' placeholder='username' />
+                <br>
+                <input type='password' name='password' id='password' placeholder='password' />
+                <br>
+                <input type='submit' name='submit' value="Login"/>
+            </form>
+        </div>
     </div>
-
-    <centered>
-        <h1>Login</h1>
-        <form action='login' method='POST'>
-            <input type='text' name='email' id='email' placeholder='username' />
-            <br>
-            <input type='password' name='password' id='password' placeholder='password' />
-            <br>
-            <input type='submit' name='submit' />
-        </form>
-    </centered>
 </body>
 
 </html>

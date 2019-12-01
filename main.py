@@ -1,4 +1,4 @@
-from flask import Flask, render_template, flash, request, session
+from flask import Flask, render_template, flash, request, session, send_from_directory
 from wtforms import Form, FloatField, TextField, TextAreaField, validators, StringField, SubmitField, SelectField, FieldList, FormField
 from flask_login import login_required, LoginManager, current_user
 from collections import OrderedDict
@@ -151,23 +151,15 @@ def playerview():
     else:
         user = current_user
         player = players[user.id]
-    # form = construct_form(user)(request.form)
 
     form = PortfolioForm()
     form.title = str(user.id)
     for plant in player.plants:
-        # print(plant.name)
         bid_form = BidForm()
         bid_form.plant_name = plant.name
         bid_form.bid = plant.bid
         form.plantbids.append_entry(bid_form)
-        # print(plant.name)
-        # print(bid_form.plant_name)
 
-    # form = portfolio_form(request.form)
-    print(len(form.plantbids.entries))
-
-    print(form.errors)
     if request.method == 'POST':
 
         bids = []
@@ -203,8 +195,6 @@ def playerview():
         'breakpoints': state.breakpoints, 'sorted_bids': state.str_sorted_bids, 
         'chart_div': state.chart_div, 'chart_script': state.chart_script
     }
-
-    # print(portfolio_form.plantbids[0].plant_name.data)
 
     return render_template('player.html', **kwargs)
 

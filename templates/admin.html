@@ -13,48 +13,68 @@
 </head>
 
 <body>
-    <div id="nav" class="fourteen columns">
+    <div class="container">
+        <div id="nav" class="fourteen columns" style="margin-bottom: 0px; border-bottom: 1px solid #eee;">
+            <ul>
+                <li><a href="player">Player Page</a></li>
+                <li><a href="admin">Admin Page</a></li>
+                <li><a href="login">Login</a></li>
+                <li><a href="logout">Logout</a></li>
+            </ul>
+        </div>
+        <div id="nav-separator" style="padding: 3rem 0;"></div>
+        {% with messages = get_flashed_messages(with_categories=true) %} {% if messages %}
         <ul>
-            <li><a href="player">Player Page</a></li>
-            <li><a href="admin">Admin Page</a></li>
-            <li><a href="login">Login</a></li>
-            <li><a href="logout">Logout</a></li>
+            {% for message in messages %}
+            <li>{{ message[1] }}</li>
+            {% endfor %}
         </ul>
-    </div>
-    {% with messages = get_flashed_messages(with_categories=true) %} {% if messages %}
-    <ul>
-        {% for message in messages %}
-        <li>{{ message[1] }}</li>
+        {% endif %} {% endwith %}
+        
+        {% if not(day == 1 and hour == 1)%}
+        <div id="chart" style="margin-top: 5rem;">
+            {{ chart_div|safe }}
+            {{ chart_script|safe }}
+        </div>
+        {% endif %}
+        
+        <!-- <div class="" id="day-info" style="border-bottom: 1px solid #eee; padding-bottom: 2rem;"> -->
+        <div id="day-info" style="margin-top: 3rem; padding-bottom: 3rem;">
+            <b>Demands: </b> {{demands}} <!--| <b>Breakpoints: </b> {{breakpoints}} --><br> 
+            <b>Prices: </b> {{prices}}<br>
+            <b>Sorted Bids/Capacities: </b> {{sorted_bids}} <br>
+        </div>
+        
+        <div class="docs-section" id="hour-day-auction_type" style="padding-top: 2rem; padding-bottom: 0rem;">
+            {% if hour < 5 %} 
+            <h4 class="docs-title">Day {{day}}, hour {{hour}} | Auction type: {{auction_type}}</h4> 
+            {% endif %} 
+            {% if hour == 5 %} 
+            <h4 class="docs-title">End of day {{day}} | Auction type: {{auction_type}}</h4> 
+            {% endif %}
+        </div>
+
+        {% for (name, player, table) in player_info %}
+        <div class="docs-section" id={{name}}>
+            <h6 class="docs-header">Status of {{name}}</h6>
+            {{player}}
+            {{table}} 
+        </div>
         {% endfor %}
-    </ul>
-    {% endif %} {% endwith %}
-    {% if hour < 5 %} 
-    <h3>Day {{day}}, hour {{hour}} | Auction type: {{auction_type}}</h3> 
-    {% endif %} 
-    {% if hour == 5 %} 
-    <h3>End of day {{day}} | Auction type: {{auction_type}}</h3> 
-    {% endif %}
-    {{ chart_div|safe }}
-    {{ chart_script|safe }}
-    <b>Demands: </b> {{demands}} <!--| <b>Breakpoints: </b> {{breakpoints}} --><br> 
-    <b>Prices: </b> {{prices}}<br>
-    <b>Sorted Bids/Capacities: </b> {{sorted_bids}} <br>
-    {% for (name, player, table) in player_info %}
-    <h5>Status of {{name}}</h5>
-    {{player}}
-    {{table}} {% endfor %}
-    <br>
-    <br>        
-    {% if not(day == 4 and hour == 5) and hour < 5 %}
-    <form method="post">
-        <input type="Submit" value="Run hour"> 
-    </form>
-    {% endif %}
-    {% if not(day == 4 and hour == 5) and hour == 5 %}
-    <form method="post">
-        <input type="Submit" value="Advance to next day"> 
-    </form>
-    {% endif %}
+        
+        <div class="docs-section" id="submit-button">
+            {% if not(day == 4 and hour == 5) and hour < 5 %}
+            <form method="post">
+                <input class="button-primary" type="Submit" value="Run hour"> 
+            </form>
+            {% endif %}
+            {% if not(day == 4 and hour == 5) and hour == 5 %}
+            <form method="post">
+                <input class="button-primary" type="Submit" value="Advance to next day"> 
+            </form>
+            {% endif %}
+        </div>
+    </div>
 </body>
 
 </html>

@@ -49,10 +49,8 @@ def create_step_function(steps):
     def get_break_point(load):
         try:
             sum_xs = [sum(xs[:i+1]) for i, _ in enumerate(xs)]
-            # print(sum_xs)
             assert len(xs) == len(sum_xs)
             x_greater_than_load = lmap(lambda x: load <= x, sum_xs)
-            # print(x_greater_than_load)
             x = x_greater_than_load.index(True)
         except ValueError:
             warn("Couldn't find a valid breakpoint")
@@ -67,9 +65,6 @@ def get_intersection(f1, f2):
     else:
         optim = scipy.optimize.minimize(lambda x: (f2(x[0]) - f1(x[0]))**2, x0=0)
         print("x1: {}, y1: {}, y2: {}".format(optim.x[0], f1(optim.x), f2(optim.x)))
-        # If f1(optim.x) > f2(optim.x), then we've got a situation in which the demand curve goes through a gap.
-        # We'll handle this case when we're activating the plants. In order to do so, we return the demand price
-        # so that we can compare it to the plant bid price.
         return optim.x[0], f2(optim.x)[0] 
 
 def create_chart(sorted_plants, day, hour, intercept_x, intercept_y):
@@ -295,15 +290,18 @@ class GameState(object):
     def end_day(self, plants):
         for plant in plants:
             plant.transfer(day_end=True)
-            plant.reset()      
         print_players_from_plants(plants)
         print("Day ended")
 
     def new_day(self, plants):
         print("Starting new day")
+        # Clean the slate
         self.demands = []
         self.prices = []
         self.breakpoints = []
+        for plant in plants:
+            plant.clear()
+            plant.reset()
         # Accumulate interest
         for player in set([plant.owner for plant in plants]):
             print("Accumulating interest for", player.name)
@@ -400,16 +398,18 @@ class Plant(object):
         total_costs = sum(self.costs)
         print("Transfering cost {:,} to {}".format(total_costs, self.owner.name))
         self.owner.money -= total_costs
-        self.costs = []
     
     def transfer_profit(self):
         total_profits = sum(self.profits)
         print("Transfering profit {:,} to {}".format(total_profits, self.owner.name))
         self.owner.money += total_profits
-        self.profits = []
     
     def transfer(self, day_end=False):
         self.transfer_cost(day_end)
         self.transfer_profit()
+
+    def clear(self):
+        self.profits = []
+        self.costs = []
 
 

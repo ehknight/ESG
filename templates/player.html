@@ -43,6 +43,7 @@
     <b>Sorted Bids/Capacities: </b> {{sorted_bids}} <br>
     <b>Player info:</b> {{player_info}}
     {{table}}
+    {% if hour < 5 %}
     <h3>Bidding</h3>
     <form action="" method="POST" name="form">
         {{ form.csrf }}
@@ -69,7 +70,8 @@
         <div class="input sumbit">
             <input type="submit" value="Submit" />
         </div>
-    </form>
+    </form>        
+    {% endif %}
 </body>
 
 </html>

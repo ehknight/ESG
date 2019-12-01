@@ -235,7 +235,6 @@ class GameState(object):
                 end_x = start_x + plant.capacity # This gives us the x-coordinates of this portion of the supply curve
                 
                 demand_at_start_x = demand_fn(start_x)
-                print("Demand at start_x:", demand_at_start_x)
                 if demand_at_start_x < bid: 
                     # Then this segement of the supply curve is always above demand
                     # End with what market price, demand is currently set at
@@ -288,29 +287,32 @@ class GameState(object):
 
 
         self.cur_hour += 1
-        if self.cur_hour > 5:
+        if self.cur_hour == 5:
             self.end_day(plants)
+        if self.cur_hour > 5:
+            self.new_day(plants)
 
     def end_day(self, plants):
-        self.demands = []
-        self.prices = []
-        self.breakpoints = []
         for plant in plants:
             plant.transfer(day_end=True)
             plant.reset()      
-        # If we're on Day 4, transfer without interest (game ends right at the end of day 4)
-        if self.cur_day < 4:
-            for player in set([plant.owner for plant in plants]):
-                print("Accumulating interest for", player.name)
-                print("Pre-interest:" + str(player.money))
-                player.accumulate_interest()
-                print("Post-interest:" + str(player.money))
         print_players_from_plants(plants)
+        print("Day ended")
+
+    def new_day(self, plants):
+        print("Starting new day")
+        self.demands = []
+        self.prices = []
+        self.breakpoints = []
+        # Accumulate interest
+        for player in set([plant.owner for plant in plants]):
+            print("Accumulating interest for", player.name)
+            print("Pre-interest:" + str(player.money))
+            player.accumulate_interest()
+            print("Post-interest:" + str(player.money))
         self.cur_hour = 1
         self.cur_day += 1
         self.switch_auction_type()
-        print("Day ended")
-
 
 
 class Player(object):
@@ -396,13 +398,13 @@ class Plant(object):
         if day_end:
             self.costs.append(self.o_and_m)
         total_costs = sum(self.costs)
-        print("Transfering {:,} to {}".format(total_costs, self.owner.name))
+        print("Transfering cost {:,} to {}".format(total_costs, self.owner.name))
         self.owner.money -= total_costs
         self.costs = []
     
     def transfer_profit(self):
         total_profits = sum(self.profits)
-        print("Transfering {:,} to {}".format(total_profits, self.owner.name))
+        print("Transfering profit {:,} to {}".format(total_profits, self.owner.name))
         self.owner.money += total_profits
         self.profits = []
     

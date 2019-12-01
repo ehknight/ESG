@@ -45,9 +45,14 @@
     {{table}} {% endfor %}
     <br>
     <br>        
-    {% if not(day == 4 and hour == 5) %}
+    {% if not(day == 4 and hour == 5) and hour < 5 %}
     <form method="post">
-        <input type="Submit" value="Advance to next hour"> 
+        <input type="Submit" value="Run hour"> 
+    </form>
+    {% endif %}
+    {% if not(day == 4 and hour == 5) and hour == 5 %}
+    <form method="post">
+        <input type="Submit" value="Advance to next day"> 
     </form>
     {% endif %}
 </body>

@@ -137,9 +137,9 @@ def adminview():
 
     return render_template('admin.html', player_info=tables, auction_type=state.auction_type,
                             day=state.cur_day, hour=state.cur_hour, demands=state.demands, 
-                            prices=state.prices, breakpoints=state.breakpoints, 
-                            sorted_bids=state.str_sorted_bids, chart_div=state.chart_div, 
-                            chart_script=state.chart_script)
+                            prices=state.prices, carbons=state.carbons, carbon_to_date=state.carbon_to_date,
+                            breakpoints=state.breakpoints, sorted_bids=state.str_sorted_bids, 
+                            chart_div=state.chart_div, chart_script=state.chart_script)
 
 @login_required
 @app.route("/player", methods=['GET', 'POST'])
@@ -191,7 +191,8 @@ def playerview():
         'table':table, 'form':form, 'name': user.id,
         'day': state.cur_day, 'hour': state.cur_hour,
         'auction_type': state.auction_type, 'player_info': str(player),
-        'demands': state.demands, 'prices': state.prices,
+        'demands': state.demands, 'prices': state.prices, 
+        'carbons': state.carbons, 'carbon_to_date': state.carbon_to_date,
         'breakpoints': state.breakpoints, 'sorted_bids': state.str_sorted_bids, 
         'chart_div': state.chart_div, 'chart_script': state.chart_script
     }

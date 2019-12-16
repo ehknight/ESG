@@ -6,8 +6,9 @@ from flask_table import Table, Col
 class PlantTable(Table):
     name = Col('Plant Name')
     electricity_used = Col('Electricity Used')
-    costs = Col('Costs')
-    profits = Col('Profits')
+    carbon_produced = Col('Carbon Produced')
+    costs = Col('Cost')
+    revenues = Col('Revenue')
     bids = Col('Current Bid')
 
 class PeopleTable(Table):
@@ -19,8 +20,8 @@ def make_plants_table(plants):
     plants_table_constructor = []
     for plant in plants:
         plants_table_constructor.append(dict(
-            name=plant.name, electricity_used = plant.electricity_used,
-            costs=plant.costs, profits=plant.profits, bids=plant.bid
+            name=plant.name, electricity_used = plant.electricity_used, carbon_produced = plant.carbon_produced,
+            costs=plant.costs, revenues=plant.revenues, bids=plant.bid
         ))
     plants_table = PlantTable(plants_table_constructor)
     return plants_table
@@ -49,7 +50,7 @@ def reset_bids(plants):
     return
 
 def get_users_and_portfolios(csv):
-    user_dict = OrderedDict({'admin': {'password': 'admin', 'admin': True}})
+    user_dict = OrderedDict({'admin': {'password': 'moresecure', 'admin': True}})
     portfolios = dict()
     for _, row in csv.iterrows():
         info = {'password': row['Password'], 'admin': False, 

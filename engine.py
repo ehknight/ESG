@@ -3,6 +3,7 @@
 # also make sure to take integral in the case of sloped demand curve
 
 from collections import defaultdict
+from collections.abc import Iterable
 
 from bokeh.plotting import figure, output_file, show
 from bokeh.models import ColumnDataSource, HoverTool
@@ -18,8 +19,11 @@ from time import sleep
 from warnings import warn
 from utils import reset_bids
 
+import csv
+
 # Globals
-interest_rate = 0.05
+interest_rate = 0.05 # %/day
+carbon_tax_rate = 30 # $/ton
 
 TESTING = False
 
@@ -36,6 +40,13 @@ else:
 first = lambda x: x[0]
 second = lambda x: x[1]
 lmap = lambda f, x: list(map(f, x))
+
+def flatten(l):
+    for el in l:
+        if isinstance(el, Iterable) and not isinstance(el, (str, bytes)):
+            yield from flatten(el)
+        else:
+            yield el
 
 def print_players_from_plants(plants):
     for player in set([plant.owner for plant in plants]):
@@ -146,12 +157,14 @@ def create_chart(sorted_plants, day, hour, intercept_x, intercept_y):
 class GameState(object):
     def __init__(self):
         self.noise_scale = 0
-        self.auction_type = 'uniform' # can also be discrete
+        self.auction_type = 'discrete' # can also be uniform
         self.cur_day = 1
         self.cur_hour = 1
         self.breakpoints = []
         self.demands = []
         self.prices = []
+        self.carbons = []
+        self.carbon_to_date = 0
         self.str_sorted_bids = []
         self.chart_div = ''
         self.chart_script = ''
@@ -210,7 +223,7 @@ class GameState(object):
         if self.cur_hour < 5: # The fifth hour allows us to see the results of hour four. It is not a true production hour.
             # tuples of (plant, bid)
             price_fn, sorted_plants, breakpoint_fn = self.construct_price_curve(plant_bids)
-            self.str_sorted_bids = [(plant.name, bid) for plant, bid in sorted_plants]
+            self.str_sorted_bids = [] # A list of tuples (plant name, bid, produced MW)
 
             demand_fn = self.construct_demand_curve()
 
@@ -226,6 +239,7 @@ class GameState(object):
             market_price = 0
 
             for plant, bid in sorted_plants:
+
                 start_x = market_demand 
                 end_x = start_x + plant.capacity # This gives us the x-coordinates of this portion of the supply curve
                 
@@ -257,7 +271,11 @@ class GameState(object):
             else:
                 raise ValueError
 
+            hour_carbon_sum = 0
             for plant, bid in sorted_plants:
+
+                plant.bids.append(bid) # Save a record of each plant's hourly bid history
+
                 leftover_electricity = market_demand - total_activated_so_far
                 assert leftover_electricity >= 0
                 
@@ -266,14 +284,21 @@ class GameState(object):
 
                 electricity_used = min(leftover_electricity, plant.capacity)
                 price_per_mwh = price_per_mwh_fn(plant)
+                carbon_produced = electricity_used * plant.carbon
+                hour_carbon_sum += carbon_produced
 
-                print("Plant {} used {} MWh of electricity at ${}/MWh"\
-                    .format(plant.name, electricity_used, price_per_mwh))
+                print("Plant {} used {} MWh of electricity at ${}/MWh, producing {} tons of carbon"\
+                    .format(plant.name, electricity_used, price_per_mwh, carbon_produced))
+
+                self.str_sorted_bids.append((plant.name, bid, electricity_used))
 
                 plant.log_cost(electricity_used)
-                plant.log_profit(price_per_mwh, electricity_used)
+                plant.log_revenue(price_per_mwh, electricity_used)
                 
                 total_activated_so_far += electricity_used
+
+            self.carbons.append(float('%.2f'%(hour_carbon_sum)))
+            self.carbon_to_date += float('%.2f'%(hour_carbon_sum))
 
             self.chart_script, self.chart_div = create_chart(sorted_plants, self.cur_day, self.cur_hour, market_demand, market_price)
 
@@ -288,8 +313,17 @@ class GameState(object):
             self.new_day(plants)
 
     def end_day(self, plants):
+        
+        # Prep hour plant data recording csv
+        # csv file contains bid, production, cost, revenue, and carbon production for each hour for each plant.
+        file_name = "logs/plant_hour_info_day_" + str(self.cur_day) + ".csv"
+        f = open(file_name, 'w')
+        headers = "portfolio,plant,bid_h1,bid_h2,bid_h3,bid_h4,mwh_h1,mwh_h2,mwh_h3,mwh_h4,carbon_h1,carbon_h2,carbon_h3,carbon_h4,revenue_h1,revenue_h2,revenue_h3,revenue_h4,cost_h1,cost_h2,cost_h3,cost_h4,cost_om\n"
+        f.write(headers)
+        f.close()
+
         for plant in plants:
-            plant.transfer(day_end=True)
+            plant.transfer(file_name, day_end=True)
         print_players_from_plants(plants)
         print("Day ended")
 
@@ -298,6 +332,7 @@ class GameState(object):
         # Clean the slate
         self.demands = []
         self.prices = []
+        self.carbons = []
         self.breakpoints = []
         for plant in plants:
             plant.clear()
@@ -316,11 +351,14 @@ class GameState(object):
 class Player(object):
     def __init__(self, name, starting_money):
         self.name = name
+        self.portfolio = ""
         self.plants = []
         self.bids = {}
         self.money = float(starting_money)
+        self.carbon = 0
     
     def buy_portfolio(self, portfolio_name):
+        self.portfolio = portfolio_name
         plants = []
         raw_plants = portfolio_csv[portfolio_csv['portfolioname'] == portfolio_name]
         assert len(raw_plants) > 0
@@ -332,6 +370,7 @@ class Player(object):
                       'heat_rate': 0, # NOTE: portfolio doesn't define heat rate
                       'fuel_price': 0, # NOTE: portfolio doesn't define fuel price
                       'o_and_m': raw_plant['fixom'],
+                      'carbon': raw_plant['carbon'],
                       'portfolio': raw_plant['portfolio'],
                       'id': raw_plant['id']}
             plant = Plant(**kwargs)
@@ -345,18 +384,18 @@ class Player(object):
         plant = matching_plants[0]
        
         self.bids[plant] = bid
-        plant.bid = bid
+        plant.bid = bid # Current bid
     
     def accumulate_interest(self):
         self.money *= 1 + interest_rate
 
     def __str__(self):
-        return "\nName: {} | Plants owned: {} | Total money: ${}"\
-                .format(self.name, [plant.name for plant in self.plants], self.money)
+        return "Portfolio: {}  |  Total Money: ${}  |  Carbon Produced: {} tons"\
+                .format(self.portfolio, '%.2f'%(self.money), self.carbon)
 
 class Plant(object):
-    def __init__(self, name, capacity, cost_per_mwh, 
-                 heat_rate, fuel_price, o_and_m, portfolio, id):
+    def __init__(self, name, capacity, cost_per_mwh, heat_rate, 
+                 fuel_price, o_and_m, carbon, portfolio, id):
         # mw -> capacity; fuelcost+varom -> cost; 
         self.name = name
         self.capacity = capacity # MW
@@ -364,6 +403,7 @@ class Plant(object):
         self.heat_rate = heat_rate # MMBTU/MWh
         self.fuel_price = fuel_price # $/MMBTU
         self.o_and_m = o_and_m # $/day
+        self.carbon = carbon # tons/MWh
         self.portfolio = portfolio
         self.id = id
         self.owner = None
@@ -372,9 +412,11 @@ class Plant(object):
     def reset(self):
         # NOTE: when is o&m paid?
         self.costs = []
-        self.profits = []
+        self.revenues = []
         self.electricity_used = []
-        print("Resetting. Name: {}, Costs: {}, Profits: {}, Electricity Used: {}".format(self.name, self.costs, self.profits, self.electricity_used))
+        self.carbon_produced = []
+        self.bids = []
+        print("Resetting. Name: {}, Bids: {}, Costs: {}, Revenues: {}, Electricity Used: {}, Carbon Produced: {}".format(self.name, self.bids, self.costs, self.revenues, self.electricity_used, self.carbon_produced))
 
         self.bid = 0
 
@@ -384,32 +426,52 @@ class Plant(object):
         heat_produced = mwh_used * self.heat_rate
         cost_from_heat = heat_produced * self.fuel_price
         cost_from_var_cost = mwh_used * self.cost_per_mwh
-        cur_cost = cost_from_heat + cost_from_var_cost
+        cost_from_carbon_tax = mwh_used * self.carbon * carbon_tax_rate
+        cur_cost = cost_from_heat + cost_from_var_cost + cost_from_carbon_tax
         self.costs.append(cur_cost)
         self.electricity_used.append(mwh_used)
+        self.carbon_produced.append(mwh_used * self.carbon)
 
-    def log_profit(self, price_per_mwh, amount_used):
+    def log_revenue(self, price_per_mwh, amount_used):
         assert 0 <= amount_used <= self.capacity
-        self.profits.append(price_per_mwh * amount_used)
+        self.revenues.append(price_per_mwh * amount_used)
     
     def transfer_cost(self, day_end=False):
         if day_end:
             self.costs.append(self.o_and_m)
         total_costs = sum(self.costs)
-        print("Transfering cost {:,} to {}".format(total_costs, self.owner.name))
+        print("Plant {} transfering cost {:,} to {}".format(self.name, total_costs, self.owner.name))
         self.owner.money -= total_costs
     
-    def transfer_profit(self):
-        total_profits = sum(self.profits)
-        print("Transfering profit {:,} to {}".format(total_profits, self.owner.name))
-        self.owner.money += total_profits
+    def transfer_revenue(self):
+        total_revenues = sum(self.revenues)
+        print("Plant {} transfering revenue {:,} to {}".format(self.name, total_revenues, self.owner.name))
+        self.owner.money += total_revenues
+
+    def transfer_carbon(self):
+        total_carbon = sum(self.carbon_produced)
+        self.owner.carbon += total_carbon
     
-    def transfer(self, day_end=False):
+    def transfer(self, file_name, day_end=False):
         self.transfer_cost(day_end)
-        self.transfer_profit()
+        self.transfer_revenue()
+        self.transfer_carbon()
+
+        print("Ending day. Name: {}, Bids: {}, Costs: {}, Revenues: {}, Electricity Used: {}, Carbon Produced: {}"
+              .format(self.name, self.bids, self.costs, self.revenues, self.electricity_used, self.carbon_produced))
+        
+        # Write to csv 
+        # csv file contains bid, production, cost, revenue, and carbon production for each hour for each plant.  
+        plant_day_data = [self.portfolio, self.name, self.bids, self.electricity_used, self.carbon_produced, self.revenues, self.costs]
+        plant_day_data = list(flatten(plant_day_data))
+        with open(file_name, "a", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(plant_day_data)   
+        f.close()
+
 
     def clear(self):
-        self.profits = []
+        self.revenues = []
         self.costs = []
 
 

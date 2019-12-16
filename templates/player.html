@@ -40,6 +40,8 @@
         <div id="day-info" style="margin-top: 3rem; padding-bottom: 3rem;">
             <b>Demands: </b> {{demands}}<br> 
             <b>Prices: </b> {{prices}}<br>
+            <b>Carbon produced: </b> {{carbons}}<br>
+            <b>Carbon produced so far: </b> {{carbon_to_date}} tons<br>
             <b>Sorted Bids/Capacities: </b> {{sorted_bids}} <br>
         </div>        
 
@@ -56,6 +58,7 @@
             {{player_info}}
             {{table}}
         </div>
+
         {% if hour < 5 %}
         <div class="docs-section" id="bidding">
             <h6 class="docs-header">Bidding</h6>
